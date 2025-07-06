@@ -45,10 +45,12 @@ func TestParseArgs(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "no arguments",
+			name: "no arguments - should enable TUI mode by default",
 			args: []string{"cclog"},
-			expected: Config{},
-			wantErr: true,
+			expected: Config{
+				TUIMode: true,
+			},
+			wantErr: false,
 		},
 		{
 			name: "help flag",
@@ -69,6 +71,23 @@ func TestParseArgs(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "explicit TUI mode",
+			args: []string{"cclog", "--tui"},
+			expected: Config{
+				TUIMode: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "TUI mode with path",
+			args: []string{"cclog", "--tui", "/path/to/logs"},
+			expected: Config{
+				InputPath: "/path/to/logs",
+				TUIMode:   true,
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -84,7 +103,9 @@ func TestParseArgs(t *testing.T) {
 			}
 
 			if !tt.wantErr {
-				if config.InputPath != tt.expected.InputPath {
+				// For TUI mode tests, we don't check InputPath if expected is empty
+				// because the default directory is set automatically
+				if tt.expected.InputPath != "" && config.InputPath != tt.expected.InputPath {
 					t.Errorf("Expected InputPath %s, got %s", tt.expected.InputPath, config.InputPath)
 				}
 				if config.OutputPath != tt.expected.OutputPath {
@@ -98,6 +119,9 @@ func TestParseArgs(t *testing.T) {
 				}
 				if config.IncludeAll != tt.expected.IncludeAll {
 					t.Errorf("Expected IncludeAll %v, got %v", tt.expected.IncludeAll, config.IncludeAll)
+				}
+				if config.TUIMode != tt.expected.TUIMode {
+					t.Errorf("Expected TUIMode %v, got %v", tt.expected.TUIMode, config.TUIMode)
 				}
 			}
 		})

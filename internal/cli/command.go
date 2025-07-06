@@ -24,13 +24,17 @@ type Config struct {
 
 // ParseArgs parses command-line arguments and returns configuration
 func ParseArgs(args []string) (Config, error) {
-	if len(args) < 2 {
-		return Config{}, fmt.Errorf("insufficient arguments")
-	}
-
 	config := Config{}
 	
-	for i := 1; i < len(args); i++ {
+	// If no arguments provided, enable TUI mode by default
+	if len(args) < 2 {
+		config.TUIMode = true
+		// Continue to process default directory setup below
+	}
+	
+	// Only process arguments if we have them
+	if len(args) >= 2 {
+		for i := 1; i < len(args); i++ {
 		arg := args[i]
 		
 		switch arg {
@@ -55,6 +59,7 @@ func ParseArgs(args []string) (Config, error) {
 			if config.InputPath == "" {
 				config.InputPath = arg
 			}
+		}
 		}
 	}
 
@@ -159,10 +164,11 @@ func GetHelpText() string {
 cclog - Claude Conversation Log to Markdown Converter
 
 USAGE:
-    cclog [OPTIONS] <input>
+    cclog [OPTIONS] [input]
 
 ARGUMENTS:
-    <input>    Path to JSONL file or directory containing JSONL files
+    [input]    Path to JSONL file or directory containing JSONL files
+               (If no input provided, opens interactive TUI mode)
 
 OPTIONS:
     -d, --directory    Treat input as directory (parse all .jsonl files)
@@ -173,6 +179,9 @@ OPTIONS:
     -h, --help         Show this help message
 
 EXAMPLES:
+    # Open interactive file picker (default behavior)
+    cclog
+
     # Convert single file to stdout
     cclog conversation.jsonl
 
@@ -182,7 +191,7 @@ EXAMPLES:
     # Convert all JSONL files in directory
     cclog -d /path/to/logs -o combined.md
 
-    # Open interactive file picker (TUI mode)
+    # Open interactive file picker (explicit TUI mode)
     cclog --tui
 
     # Open TUI in specific directory
