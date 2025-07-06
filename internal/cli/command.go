@@ -20,6 +20,7 @@ type Config struct {
 	IncludeAll  bool
 	ShowUUID    bool
 	TUIMode     bool
+	Recursive   bool
 }
 
 // ParseArgs parses command-line arguments and returns configuration
@@ -54,6 +55,9 @@ func ParseArgs(args []string) (Config, error) {
 		case "--show-uuid":
 			config.ShowUUID = true
 		case "--tui":
+			config.TUIMode = true
+		case "-r", "--recursive":
+			config.Recursive = true
 			config.TUIMode = true
 		default:
 			if config.InputPath == "" {
@@ -176,6 +180,7 @@ OPTIONS:
     --include-all      Include all messages (no filtering of empty/system messages)
     --show-uuid        Show UUID metadata for each message
     --tui              Open interactive file picker (TUI mode)
+    -r, --recursive    Recursively search for .jsonl files and open TUI mode
     -h, --help         Show this help message
 
 EXAMPLES:
@@ -190,6 +195,9 @@ EXAMPLES:
 
     # Convert all JSONL files in directory
     cclog -d /path/to/logs -o combined.md
+
+    # Recursively find and list all JSONL files (TUI mode enabled automatically)
+    cclog -r /path/to/logs
 
     # Open interactive file picker (explicit TUI mode)
     cclog --tui

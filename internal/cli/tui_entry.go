@@ -10,7 +10,7 @@ import (
 // RunTUI starts the TUI file picker and returns the selected file
 func RunTUI(config Config) (string, error) {
 	// Create and run the TUI model
-	model := filepicker.NewModel(config.InputPath)
+	model := filepicker.NewModel(config.InputPath, config.Recursive)
 	program := tea.NewProgram(model)
 	
 	finalModel, err := program.Run()

@@ -88,6 +88,53 @@ func TestParseArgs(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "recursive flag",
+			args: []string{"cclog", "--recursive", "/path/to/logs"},
+			expected: Config{
+				InputPath: "/path/to/logs",
+				Recursive: true,
+				TUIMode:   true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "recursive and TUI mode combined",
+			args: []string{"cclog", "--recursive", "--tui"},
+			expected: Config{
+				Recursive: true,
+				TUIMode:   true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "recursive flag alone should enable TUI mode",
+			args: []string{"cclog", "--recursive"},
+			expected: Config{
+				Recursive: true,
+				TUIMode:   true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "short recursive flag alone should enable TUI mode",
+			args: []string{"cclog", "-r"},
+			expected: Config{
+				Recursive: true,
+				TUIMode:   true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "recursive with path should enable TUI mode",
+			args: []string{"cclog", "--recursive", "/path/to/logs"},
+			expected: Config{
+				InputPath: "/path/to/logs",
+				Recursive: true,
+				TUIMode:   true,
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -122,6 +169,9 @@ func TestParseArgs(t *testing.T) {
 				}
 				if config.TUIMode != tt.expected.TUIMode {
 					t.Errorf("Expected TUIMode %v, got %v", tt.expected.TUIMode, config.TUIMode)
+				}
+				if config.Recursive != tt.expected.Recursive {
+					t.Errorf("Expected Recursive %v, got %v", tt.expected.Recursive, config.Recursive)
 				}
 			}
 		})

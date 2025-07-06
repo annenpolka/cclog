@@ -12,7 +12,7 @@ import (
 )
 
 func TestModel_Init(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	cmd := model.Init()
 	
 	if cmd == nil {
@@ -21,7 +21,7 @@ func TestModel_Init(t *testing.T) {
 }
 
 func TestModel_QuitWithQ(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	tm := teatest.NewTestModel(t, model)
 	
 	// Type 'q' to quit
@@ -35,7 +35,7 @@ func TestModel_QuitWithQ(t *testing.T) {
 }
 
 func TestModel_CursorMovement(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	model.files = []FileInfo{
 		{Name: "file1.txt", IsDir: false},
 		{Name: "file2.txt", IsDir: false},
@@ -62,7 +62,7 @@ func TestModel_CursorMovement(t *testing.T) {
 }
 
 func TestModel_View(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	model.files = []FileInfo{
 		{Name: "file1.txt", IsDir: false},
 		{Name: "dir1", IsDir: true},
@@ -81,7 +81,7 @@ func TestModel_View(t *testing.T) {
 }
 
 func TestModel_CursorBounds(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	model.files = []FileInfo{
 		{Name: "file1.txt", IsDir: false},
 		{Name: "file2.txt", IsDir: false},
@@ -110,7 +110,7 @@ func TestModel_CursorBounds(t *testing.T) {
 }
 
 func TestModel_VimStyleKeys(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	model.files = []FileInfo{
 		{Name: "file1.txt", IsDir: false},
 		{Name: "file2.txt", IsDir: false},
@@ -137,7 +137,7 @@ func TestModel_VimStyleKeys(t *testing.T) {
 }
 
 func TestModel_EnterSelection(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	model.files = []FileInfo{
 		{Name: "file1.txt", Path: "/path/file1.txt", IsDir: false},
 		{Name: "file2.txt", Path: "/path/file2.txt", IsDir: false},
@@ -160,7 +160,7 @@ func TestModel_EnterSelection(t *testing.T) {
 }
 
 func TestModel_EmptyFileList(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	model.files = []FileInfo{} // empty list
 	
 	// Test enter key on empty list
@@ -178,7 +178,7 @@ func TestModel_EmptyFileList(t *testing.T) {
 }
 
 func TestModel_Integration_WithTeatest(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	model.files = []FileInfo{
 		{Name: "file1.txt", Path: "/tmp/file1.txt", IsDir: false},
 		{Name: "file2.txt", Path: "/tmp/file2.txt", IsDir: false},
@@ -199,7 +199,7 @@ func TestModel_Integration_WithTeatest(t *testing.T) {
 }
 
 func TestModel_FilesLoadedMessage(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	
 	testFiles := []FileInfo{
 		{Name: "test1.txt", IsDir: false},
@@ -220,7 +220,7 @@ func TestModel_FilesLoadedMessage(t *testing.T) {
 }
 
 func TestModel_GetSelectedFile(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	model.files = []FileInfo{
 		{Name: "file1.txt", Path: "/path/file1.txt", IsDir: false},
 		{Name: "file2.txt", Path: "/path/file2.txt", IsDir: false},
@@ -235,7 +235,7 @@ func TestModel_GetSelectedFile(t *testing.T) {
 }
 
 func TestModel_GetSelectedFile_NoSelection(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	selectedPath := model.GetSelectedFile()
 	if selectedPath != "" {
 		t.Errorf("Expected empty string for no selection, got '%s'", selectedPath)
@@ -251,7 +251,7 @@ func TestModel_DirectoryNavigation(t *testing.T) {
 		t.Fatalf("Failed to create subdirectory: %v", err)
 	}
 	
-	model := NewModel(tempDir)
+	model := NewModel(tempDir, false)
 	model.files = []FileInfo{
 		{Name: "subdir", Path: subDir, IsDir: true},
 		{Name: "file.txt", Path: filepath.Join(tempDir, "file.txt"), IsDir: false},
@@ -282,7 +282,7 @@ func TestModel_DirectoryNavigation(t *testing.T) {
 }
 
 func TestModel_FileSelection(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	model.files = []FileInfo{
 		{Name: "file.txt", Path: "/path/file.txt", IsDir: false},
 	}
@@ -314,7 +314,7 @@ func TestModel_BackNavigation(t *testing.T) {
 	}
 	
 	// Start from subdirectory
-	model := NewModel(subDir)
+	model := NewModel(subDir, false)
 	model.files = []FileInfo{
 		{Name: "..", Path: tempDir, IsDir: true},
 		{Name: "file.txt", Path: filepath.Join(subDir, "file.txt"), IsDir: false},
@@ -353,7 +353,7 @@ func TestModel_BackNavigationFromRoot(t *testing.T) {
 }
 
 func TestModel_SpaceKeyFileSelection(t *testing.T) {
-	model := NewModel(".")
+	model := NewModel(".", false)
 	model.files = []FileInfo{
 		{Name: "file.txt", Path: "/path/file.txt", IsDir: false},
 	}
@@ -383,7 +383,7 @@ func TestModel_SpaceKeyOnDirectory(t *testing.T) {
 		t.Fatalf("Failed to create subdirectory: %v", err)
 	}
 	
-	model := NewModel(tempDir)
+	model := NewModel(tempDir, false)
 	model.files = []FileInfo{
 		{Name: "subdir", Path: subDir, IsDir: true},
 	}
@@ -407,7 +407,7 @@ func TestModel_SpaceKeyOnDirectory(t *testing.T) {
 
 func TestModel_EditorOpening(t *testing.T) {
 	// Test that editor command is properly created
-	model := NewModel(".")
+	model := NewModel(".", false)
 	model.files = []FileInfo{
 		{Name: "test.txt", Path: "/tmp/test.txt", IsDir: false},
 	}

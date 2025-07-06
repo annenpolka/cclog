@@ -10,7 +10,7 @@ import (
 
 func TestRunTUI_WithTeatest(t *testing.T) {
 	// Test the filepicker model directly using teatest
-	model := filepicker.NewModel(".")
+	model := filepicker.NewModel(".", false)
 	tm := teatest.NewTestModel(t, model, teatest.WithInitialTermSize(80, 24))
 	
 	// Type 'q' to quit immediately for testing

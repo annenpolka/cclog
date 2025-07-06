@@ -105,3 +105,52 @@ func GetFiles(dir string) ([]FileInfo, error) {
 	
 	return sortedFiles, nil
 }
+
+// GetFilesRecursive recursively collects all .jsonl files from a directory and its subdirectories
+func GetFilesRecursive(rootDir string) ([]FileInfo, error) {
+	var allFiles []FileInfo
+	
+	err := filepath.WalkDir(rootDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		
+		// Skip directories
+		if d.IsDir() {
+			return nil
+		}
+		
+		// Only include .jsonl files
+		if filepath.Ext(d.Name()) != ".jsonl" {
+			return nil
+		}
+		
+		// Get file info for modification time
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		
+		fileInfo := FileInfo{
+			Name:    d.Name(),
+			Path:    path,
+			IsDir:   false,
+			Size:    info.Size(),
+			ModTime: info.ModTime(),
+		}
+		
+		allFiles = append(allFiles, fileInfo)
+		return nil
+	})
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	// Sort by modification time (newest first)
+	sort.Slice(allFiles, func(i, j int) bool {
+		return allFiles[i].ModTime.After(allFiles[j].ModTime)
+	})
+	
+	return allFiles, nil
+}

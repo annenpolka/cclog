@@ -11,22 +11,24 @@ import (
 )
 
 type Model struct {
-	dir      string
-	files    []FileInfo
-	cursor   int
-	selected string
+	dir       string
+	files     []FileInfo
+	cursor    int
+	selected  string
+	recursive bool
 }
 
-func NewModel(dir string) Model {
+func NewModel(dir string, recursive bool) Model {
 	return Model{
-		dir:    dir,
-		files:  []FileInfo{},
-		cursor: 0,
+		dir:       dir,
+		files:     []FileInfo{},
+		cursor:    0,
+		recursive: recursive,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return loadFiles(m.dir)
+	return loadFiles(m.dir, m.recursive)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -50,7 +52,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Navigate into directory
 					m.dir = selectedItem.Path
 					m.cursor = 0
-					return m, loadFiles(m.dir)
+					return m, loadFiles(m.dir, m.recursive)
 				} else {
 					// Convert to markdown and open in editor
 					return m, convertAndOpenInEditor(selectedItem.Path)
@@ -77,8 +79,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var s strings.Builder
 	
-	// Show current directory
-	s.WriteString("📁 " + m.dir + "\n\n")
+	// Show current directory with mode indicator
+	modeStr := ""
+	if m.recursive {
+		modeStr = " [RECURSIVE]"
+	}
+	s.WriteString("📁 " + m.dir + modeStr + "\n\n")
 	
 	// Show files list
 	for i, file := range m.files {
@@ -109,9 +115,17 @@ type filesLoadedMsg struct {
 	files []FileInfo
 }
 
-func loadFiles(dir string) tea.Cmd {
+func loadFiles(dir string, recursive bool) tea.Cmd {
 	return func() tea.Msg {
-		files, err := GetFiles(dir)
+		var files []FileInfo
+		var err error
+		
+		if recursive {
+			files, err = GetFilesRecursive(dir)
+		} else {
+			files, err = GetFiles(dir)
+		}
+		
 		if err != nil {
 			return filesLoadedMsg{files: []FileInfo{}}
 		}

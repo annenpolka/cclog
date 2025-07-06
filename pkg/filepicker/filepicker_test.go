@@ -3,6 +3,7 @@ package filepicker
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -304,5 +305,112 @@ func TestGetFiles_SortsByModTime(t *testing.T) {
 	
 	if regularFiles[1].Name != "old.txt" {
 		t.Errorf("Expected oldest file 'old.txt' to be second, got '%s'", regularFiles[1].Name)
+	}
+}
+
+// TDD Red Phase: Recursive file listing tests
+
+func TestGetFilesRecursive(t *testing.T) {
+	// Red: This test should fail because GetFilesRecursive doesn't exist yet
+	tempDir := t.TempDir()
+	
+	// Create nested directory structure
+	subDir := filepath.Join(tempDir, "subdir")
+	if err := os.Mkdir(subDir, 0755); err != nil {
+		t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+	
+	nestedDir := filepath.Join(subDir, "nested")
+	if err := os.Mkdir(nestedDir, 0755); err != nil {
+		t.Fatalf("Failed to create nested directory: %v", err)
+	}
+	
+	// Create files at different levels
+	rootFile := filepath.Join(tempDir, "root.jsonl")
+	subFile := filepath.Join(subDir, "sub.jsonl")
+	nestedFile := filepath.Join(nestedDir, "nested.jsonl")
+	
+	if err := os.WriteFile(rootFile, []byte("root content"), 0644); err != nil {
+		t.Fatalf("Failed to create root file: %v", err)
+	}
+	
+	if err := os.WriteFile(subFile, []byte("sub content"), 0644); err != nil {
+		t.Fatalf("Failed to create sub file: %v", err)
+	}
+	
+	if err := os.WriteFile(nestedFile, []byte("nested content"), 0644); err != nil {
+		t.Fatalf("Failed to create nested file: %v", err)
+	}
+	
+	// Test recursive file listing
+	files, err := GetFilesRecursive(tempDir)
+	if err != nil {
+		t.Fatalf("GetFilesRecursive failed: %v", err)
+	}
+	
+	// Should find all .jsonl files recursively
+	jsonlFiles := make(map[string]bool)
+	for _, file := range files {
+		if filepath.Ext(file.Name) == ".jsonl" {
+			jsonlFiles[file.Name] = true
+		}
+	}
+	
+	expectedFiles := []string{"root.jsonl", "sub.jsonl", "nested.jsonl"}
+	for _, expected := range expectedFiles {
+		if !jsonlFiles[expected] {
+			t.Errorf("Expected to find %s in recursive listing", expected)
+		}
+	}
+	
+	// Should have at least 3 JSONL files
+	if len(jsonlFiles) < 3 {
+		t.Errorf("Expected at least 3 JSONL files, got %d", len(jsonlFiles))
+	}
+}
+
+func TestGetFilesRecursive_WithRelativePaths(t *testing.T) {
+	// Red: This test should fail because GetFilesRecursive doesn't exist yet
+	tempDir := t.TempDir()
+	
+	// Create nested structure
+	subDir := filepath.Join(tempDir, "logs", "2025")
+	if err := os.MkdirAll(subDir, 0755); err != nil {
+		t.Fatalf("Failed to create nested directories: %v", err)
+	}
+	
+	// Create file in nested directory
+	nestedFile := filepath.Join(subDir, "conversation.jsonl")
+	if err := os.WriteFile(nestedFile, []byte("content"), 0644); err != nil {
+		t.Fatalf("Failed to create nested file: %v", err)
+	}
+	
+	// Test recursive listing
+	files, err := GetFilesRecursive(tempDir)
+	if err != nil {
+		t.Fatalf("GetFilesRecursive failed: %v", err)
+	}
+	
+	// Find the nested file
+	var foundFile *FileInfo
+	for _, file := range files {
+		if file.Name == "conversation.jsonl" {
+			foundFile = &file
+			break
+		}
+	}
+	
+	if foundFile == nil {
+		t.Fatal("Expected to find conversation.jsonl in recursive listing")
+	}
+	
+	// Path should include relative directory structure
+	expectedPathSuffix := filepath.Join("logs", "2025", "conversation.jsonl")
+	if !filepath.IsAbs(foundFile.Path) {
+		t.Error("Expected absolute path in FileInfo.Path")
+	}
+	
+	if !strings.HasSuffix(foundFile.Path, expectedPathSuffix) {
+		t.Errorf("Expected path to end with %s, got %s", expectedPathSuffix, foundFile.Path)
 	}
 }
