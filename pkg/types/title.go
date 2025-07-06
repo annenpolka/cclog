@@ -13,14 +13,14 @@ const (
 // ExtractTitle extracts a suitable title from conversation log
 func ExtractTitle(log *ConversationLog) string {
 	if log == nil || len(log.Messages) == 0 {
-		return "Claude Conversation"
+		return "(empty)"
 	}
 
 	// First, try to find a summary type message
 	for _, msg := range log.Messages {
 		if msg.Type == "summary" {
 			if title := extractTitleFromSummary(msg); title != "" {
-				return title
+				return replaceNewlinesWithSpaces(title)
 			}
 		}
 	}
@@ -29,12 +29,21 @@ func ExtractTitle(log *ConversationLog) string {
 	for _, msg := range log.Messages {
 		if msg.Type == "user" && !msg.IsMeta {
 			if title := extractTitleFromUserMessage(msg); title != "" {
-				return title
+				return replaceNewlinesWithSpaces(title)
 			}
 		}
 	}
 
 	return "Claude Conversation"
+}
+
+// replaceNewlinesWithSpaces replaces all newline characters with spaces
+func replaceNewlinesWithSpaces(title string) string {
+	// Replace various newline combinations with spaces
+	title = strings.ReplaceAll(title, "\r\n", " ") // CRLF
+	title = strings.ReplaceAll(title, "\n", " ")   // LF
+	title = strings.ReplaceAll(title, "\r", " ")   // CR
+	return title
 }
 
 // extractTitleFromSummary extracts title from summary type message
@@ -105,7 +114,7 @@ func TruncateTitleWithWidth(title string, width int) string {
 
 	// Count runes (not bytes) for proper Unicode handling
 	runes := []rune(title)
-	
+
 	if len(runes) <= width {
 		return title
 	}

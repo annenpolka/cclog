@@ -58,7 +58,7 @@ func TestExtractTitle(t *testing.T) {
 		{
 			name: "Handle empty messages",
 			messages: []Message{},
-			want:     "Claude Conversation",
+			want:     "(empty)",
 		},
 	}
 
@@ -158,6 +158,72 @@ func TestTruncateTitle(t *testing.T) {
 			got := TruncateTitle(tt.title)
 			if got != tt.want {
 				t.Errorf("TruncateTitle() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExtractTitle_NewlineReplacement(t *testing.T) {
+	// Test that ExtractTitle replaces newlines with spaces
+	tests := []struct {
+		name     string
+		messages []Message
+		want     string
+	}{
+		{
+			name: "Title with newline should be replaced with space",
+			messages: []Message{
+				{
+					Type:      "user",
+					Message:   map[string]interface{}{"role": "user", "content": "これは改行を含む\nタイトルのテストです"},
+					Timestamp: time.Now(),
+				},
+			},
+			want: "これは改行を含む タイトルのテストです",
+		},
+		{
+			name: "Title with multiple newlines should be replaced with spaces",
+			messages: []Message{
+				{
+					Type:      "user",
+					Message:   map[string]interface{}{"role": "user", "content": "複数の\n改行が\n含まれる\nタイトル"},
+					Timestamp: time.Now(),
+				},
+			},
+			want: "複数の 改行が 含まれる タイトル",
+		},
+		{
+			name: "Title with carriage return and newline should be replaced",
+			messages: []Message{
+				{
+					Type:      "user",
+					Message:   map[string]interface{}{"role": "user", "content": "CRLF改行\r\nテスト"},
+					Timestamp: time.Now(),
+				},
+			},
+			want: "CRLF改行 テスト",
+		},
+		{
+			name: "Summary with newlines should be replaced",
+			messages: []Message{
+				{
+					Type:      "summary",
+					Message:   map[string]interface{}{"type": "summary", "summary": "改行を含む\nサマリーの\nテスト"},
+					Timestamp: time.Now(),
+				},
+			},
+			want: "改行を含む サマリーの テスト",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			log := &ConversationLog{
+				Messages: tt.messages,
+			}
+			got := ExtractTitle(log)
+			if got != tt.want {
+				t.Errorf("ExtractTitle() = %v, want %v", got, tt.want)
 			}
 		})
 	}
