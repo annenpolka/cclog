@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"cclog/internal/cli"
+	"github.com/annenpolka/cclog/internal/cli"
 )
 
 func main() {

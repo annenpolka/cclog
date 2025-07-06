@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"cclog/pkg/types"
+	"github.com/annenpolka/cclog/pkg/types"
 )
 
 // FormatOptions controls how messages are formatted

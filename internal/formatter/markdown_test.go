@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"cclog/pkg/types"
+	"github.com/annenpolka/cclog/pkg/types"
 )
 
 func TestFormatConversationToMarkdownWithoutUUID(t *testing.T) {

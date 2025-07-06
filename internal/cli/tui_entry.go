@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"cclog/pkg/filepicker"
+	"github.com/annenpolka/cclog/pkg/filepicker"
 )
 
 // RunTUI starts the TUI file picker and returns the selected file

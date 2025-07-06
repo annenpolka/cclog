@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"cclog/pkg/types"
+	"github.com/annenpolka/cclog/pkg/types"
 )
 
 // ParseJSONLFile parses a single JSONL file and returns a ConversationLog

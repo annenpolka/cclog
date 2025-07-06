@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"cclog/pkg/types"
+	"github.com/annenpolka/cclog/pkg/types"
 )
 
 func TestIsContentfulMessage(t *testing.T) {

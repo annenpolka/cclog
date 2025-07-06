@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"cclog/pkg/filepicker"
+	"github.com/annenpolka/cclog/pkg/filepicker"
 	"github.com/charmbracelet/x/exp/teatest"
 )
 

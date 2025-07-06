@@ -3,7 +3,7 @@ package formatter
 import (
 	"strings"
 
-	"cclog/pkg/types"
+	"github.com/annenpolka/cclog/pkg/types"
 )
 
 // IsContentfulMessage determines if a message contains meaningful content

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"cclog/internal/formatter"
-	"cclog/internal/parser"
-	"cclog/pkg/types"
+	"github.com/annenpolka/cclog/internal/formatter"
+	"github.com/annenpolka/cclog/internal/parser"
+	"github.com/annenpolka/cclog/pkg/types"
 )
 
 // Config represents command-line configuration

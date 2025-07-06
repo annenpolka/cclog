@@ -8,9 +8,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"golang.org/x/term"
-	"cclog/internal/formatter"
-	"cclog/internal/parser"
-	"cclog/pkg/types"
+	"github.com/annenpolka/cclog/internal/formatter"
+	"github.com/annenpolka/cclog/internal/parser"
+	"github.com/annenpolka/cclog/pkg/types"
 )
 
 type Model struct {

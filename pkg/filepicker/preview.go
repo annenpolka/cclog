@@ -1,8 +1,8 @@
 package filepicker
 
 import (
-	"cclog/internal/formatter"
-	"cclog/internal/parser"
+	"github.com/annenpolka/cclog/internal/formatter"
+	"github.com/annenpolka/cclog/internal/parser"
 	"os"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"

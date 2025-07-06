@@ -6,8 +6,8 @@ import (
 	"sort"
 	"time"
 	
-	"cclog/internal/parser"
-	"cclog/pkg/types"
+	"github.com/annenpolka/cclog/internal/parser"
+	"github.com/annenpolka/cclog/pkg/types"
 )
 
 type FileInfo struct {
