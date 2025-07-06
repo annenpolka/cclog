@@ -21,6 +21,7 @@ type Config struct {
 	ShowUUID    bool
 	TUIMode     bool
 	Recursive   bool
+	ShowTitle   bool
 }
 
 // ParseArgs parses command-line arguments and returns configuration
@@ -54,6 +55,8 @@ func ParseArgs(args []string) (Config, error) {
 			config.IncludeAll = true
 		case "--show-uuid":
 			config.ShowUUID = true
+		case "--show-title":
+			config.ShowTitle = true
 		case "--tui":
 			config.TUIMode = true
 		case "-r", "--recursive":
@@ -132,6 +135,12 @@ func RunCommand(config Config) (string, error) {
 		}
 
 		markdown = formatter.FormatMultipleConversationsToMarkdownWithOptions(filteredLogs, formatter.FormatOptions{ShowUUID: config.ShowUUID})
+		
+		// Add title if requested
+		if config.ShowTitle && len(filteredLogs) > 0 {
+			title := types.ExtractTitle(filteredLogs[0])
+			markdown = fmt.Sprintf("# %s\n\n%s", title, markdown)
+		}
 	} else {
 		// Parse single file
 		log, err := parser.ParseJSONLFile(config.InputPath)
@@ -142,6 +151,12 @@ func RunCommand(config Config) (string, error) {
 		// Apply filtering
 		filteredLog := formatter.FilterConversationLog(log, !config.IncludeAll)
 		markdown = formatter.FormatConversationToMarkdownWithOptions(filteredLog, formatter.FormatOptions{ShowUUID: config.ShowUUID})
+		
+		// Add title if requested
+		if config.ShowTitle {
+			title := types.ExtractTitle(filteredLog)
+			markdown = fmt.Sprintf("# %s\n\n%s", title, markdown)
+		}
 	}
 
 	// Write output if specified
@@ -179,6 +194,7 @@ OPTIONS:
     -o, --output FILE  Write output to file instead of stdout
     --include-all      Include all messages (no filtering of empty/system messages)
     --show-uuid        Show UUID metadata for each message
+    --show-title       Show conversation title as header
     --tui              Open interactive file picker (TUI mode)
     -r, --recursive    Recursively search for .jsonl files and open TUI mode
     -h, --help         Show this help message

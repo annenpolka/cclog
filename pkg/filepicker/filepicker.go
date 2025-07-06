@@ -5,14 +5,18 @@ import (
 	"path/filepath"
 	"sort"
 	"time"
+	
+	"cclog/internal/parser"
+	"cclog/pkg/types"
 )
 
 type FileInfo struct {
-	Name    string
-	Path    string
-	IsDir   bool
-	Size    int64
-	ModTime time.Time
+	Name              string
+	Path              string
+	IsDir             bool
+	Size              int64
+	ModTime           time.Time
+	ConversationTitle string
 }
 
 func (f FileInfo) FilterValue() string {
@@ -23,12 +27,22 @@ func (f FileInfo) Title() string {
 	if f.IsDir {
 		return f.Name + "/"
 	}
+	
+	// For JSONL files, display correct "date - title" format
+	if filepath.Ext(f.Name) == ".jsonl" {
+		dateStr := f.ModTime.Format("2006-01-02 15:04")
+		if f.ConversationTitle != "" {
+			return dateStr + " - " + f.ConversationTitle
+		}
+		return dateStr
+	}
+	
 	return f.Name
 }
 
 func (f FileInfo) Description() string {
-	// Display modification time in YYYY-MM-DD HH:MM format for both files and directories
-	return f.ModTime.Format("2006-01-02 15:04")
+	// Return empty string for clean display - date is shown in Title for JSONL files
+	return ""
 }
 
 func GetFiles(dir string) ([]FileInfo, error) {
@@ -75,6 +89,11 @@ func GetFiles(dir string) ([]FileInfo, error) {
 			Size:    info.Size(),
 			ModTime: info.ModTime(),
 		}
+		
+		// Extract conversation title for JSONL files
+		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".jsonl" {
+			fileInfo.ConversationTitle = extractConversationTitle(fileInfo.Path)
+		}
 		files = append(files, fileInfo)
 	}
 
@@ -104,6 +123,18 @@ func GetFiles(dir string) ([]FileInfo, error) {
 	sortedFiles = append(sortedFiles, regularFiles...)
 	
 	return sortedFiles, nil
+}
+
+// extractConversationTitle extracts title from JSONL conversation file
+func extractConversationTitle(filePath string) string {
+	// Parse the JSONL file to extract conversation title
+	log, err := parser.ParseJSONLFile(filePath)
+	if err != nil {
+		return ""
+	}
+	
+	// Extract title using existing title extraction logic
+	return types.ExtractTitle(log)
 }
 
 // GetFilesRecursive recursively collects all .jsonl files from a directory and its subdirectories
@@ -138,6 +169,9 @@ func GetFilesRecursive(rootDir string) ([]FileInfo, error) {
 			Size:    info.Size(),
 			ModTime: info.ModTime(),
 		}
+		
+		// Extract conversation title for JSONL files
+		fileInfo.ConversationTitle = extractConversationTitle(path)
 		
 		allFiles = append(allFiles, fileInfo)
 		return nil
