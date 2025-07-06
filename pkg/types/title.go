@@ -53,7 +53,7 @@ func extractTitleFromSummary(msg Message) string {
 	}
 
 	// Try to parse as Summary struct
-	if summaryMap, ok := msg.Message.(map[string]interface{}); ok {
+	if summaryMap, ok := msg.Message.(map[string]any); ok {
 		if summaryText, exists := summaryMap["summary"]; exists {
 			if title, ok := summaryText.(string); ok {
 				return title
@@ -79,7 +79,7 @@ func extractTitleFromUserMessage(msg Message) string {
 	}
 
 	// Try to parse as map
-	if msgMap, ok := msg.Message.(map[string]interface{}); ok {
+	if msgMap, ok := msg.Message.(map[string]any); ok {
 		if content, exists := msgMap["content"]; exists {
 			if title, ok := content.(string); ok {
 				return title
