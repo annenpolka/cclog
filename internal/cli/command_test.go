@@ -58,6 +58,17 @@ func TestParseArgs(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "include all flag",
+			args: []string{"cclog", "/path/to/file.jsonl", "--include-all"},
+			expected: Config{
+				InputPath:   "/path/to/file.jsonl",
+				OutputPath:  "",
+				IsDirectory: false,
+				IncludeAll:  true,
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -84,6 +95,9 @@ func TestParseArgs(t *testing.T) {
 				}
 				if config.ShowHelp != tt.expected.ShowHelp {
 					t.Errorf("Expected ShowHelp %v, got %v", tt.expected.ShowHelp, config.ShowHelp)
+				}
+				if config.IncludeAll != tt.expected.IncludeAll {
+					t.Errorf("Expected IncludeAll %v, got %v", tt.expected.IncludeAll, config.IncludeAll)
 				}
 			}
 		})

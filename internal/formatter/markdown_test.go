@@ -8,6 +8,64 @@ import (
 	"cclog/pkg/types"
 )
 
+func TestFormatConversationToMarkdownWithoutUUID(t *testing.T) {
+	// Test default behavior (no UUID)
+	timestamp1, _ := time.Parse(time.RFC3339, "2025-07-06T05:01:29.618Z")
+
+	log := &types.ConversationLog{
+		FilePath: "/test/path/sample.jsonl",
+		Messages: []types.Message{
+			{
+				Type:      "user",
+				UUID:      "user-uuid-1",
+				Timestamp: timestamp1,
+				Message: map[string]interface{}{
+					"role":    "user",
+					"content": "Hello, how are you?",
+				},
+			},
+		},
+	}
+
+	markdown := FormatConversationToMarkdown(log)
+
+	// Check that UUID is NOT included by default
+	if strings.Contains(markdown, "UUID:") {
+		t.Error("Markdown should not contain UUID by default")
+	}
+
+	if !strings.Contains(markdown, "Hello, how are you?") {
+		t.Error("Markdown should contain user message content")
+	}
+}
+
+func TestFormatConversationToMarkdownWithUUID(t *testing.T) {
+	// Test with UUID enabled
+	timestamp1, _ := time.Parse(time.RFC3339, "2025-07-06T05:01:29.618Z")
+
+	log := &types.ConversationLog{
+		FilePath: "/test/path/sample.jsonl",
+		Messages: []types.Message{
+			{
+				Type:      "user",
+				UUID:      "user-uuid-1",
+				Timestamp: timestamp1,
+				Message: map[string]interface{}{
+					"role":    "user",
+					"content": "Hello, how are you?",
+				},
+			},
+		},
+	}
+
+	markdown := FormatConversationToMarkdownWithOptions(log, FormatOptions{ShowUUID: true})
+
+	// Check that UUID IS included when enabled
+	if !strings.Contains(markdown, "UUID: user-uuid-1") {
+		t.Error("Markdown should contain UUID when enabled")
+	}
+}
+
 func TestFormatConversationToMarkdown(t *testing.T) {
 	// Create test data
 	timestamp1, _ := time.Parse(time.RFC3339, "2025-07-06T05:01:29.618Z")

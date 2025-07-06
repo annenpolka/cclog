@@ -10,8 +10,18 @@ import (
 	"cclog/pkg/types"
 )
 
-// FormatConversationToMarkdown converts a single conversation log to markdown
+// FormatOptions controls how messages are formatted
+type FormatOptions struct {
+	ShowUUID bool
+}
+
+// FormatConversationToMarkdown converts a single conversation log to markdown with default options
 func FormatConversationToMarkdown(log *types.ConversationLog) string {
+	return FormatConversationToMarkdownWithOptions(log, FormatOptions{ShowUUID: false})
+}
+
+// FormatConversationToMarkdownWithOptions converts a single conversation log to markdown with custom options
+func FormatConversationToMarkdownWithOptions(log *types.ConversationLog, options FormatOptions) string {
 	var sb strings.Builder
 
 	// Header
@@ -32,15 +42,20 @@ func FormatConversationToMarkdown(log *types.ConversationLog) string {
 			continue // Skip summary messages for now
 		}
 
-		sb.WriteString(formatMessage(msg))
+		sb.WriteString(formatMessageWithOptions(msg, options))
 		sb.WriteString("\n")
 	}
 
 	return sb.String()
 }
 
-// FormatMultipleConversationsToMarkdown converts multiple conversation logs to markdown
+// FormatMultipleConversationsToMarkdown converts multiple conversation logs to markdown with default options
 func FormatMultipleConversationsToMarkdown(logs []*types.ConversationLog) string {
+	return FormatMultipleConversationsToMarkdownWithOptions(logs, FormatOptions{ShowUUID: false})
+}
+
+// FormatMultipleConversationsToMarkdownWithOptions converts multiple conversation logs to markdown with custom options
+func FormatMultipleConversationsToMarkdownWithOptions(logs []*types.ConversationLog, options FormatOptions) string {
 	var sb strings.Builder
 
 	// Main header
@@ -72,7 +87,7 @@ func FormatMultipleConversationsToMarkdown(logs []*types.ConversationLog) string
 			if msg.Type == "summary" {
 				continue
 			}
-			sb.WriteString(formatMessage(msg))
+			sb.WriteString(formatMessageWithOptions(msg, options))
 			sb.WriteString("\n")
 		}
 
@@ -82,8 +97,13 @@ func FormatMultipleConversationsToMarkdown(logs []*types.ConversationLog) string
 	return sb.String()
 }
 
-// formatMessage formats a single message to markdown
+// formatMessage formats a single message to markdown (legacy function with default options)
 func formatMessage(msg types.Message) string {
+	return formatMessageWithOptions(msg, FormatOptions{ShowUUID: false})
+}
+
+// formatMessageWithOptions formats a single message to markdown with custom options
+func formatMessageWithOptions(msg types.Message, options FormatOptions) string {
 	var sb strings.Builder
 
 	// Determine message type and format accordingly
@@ -107,8 +127,8 @@ func formatMessage(msg types.Message) string {
 		sb.WriteString("\n\n")
 	}
 
-	// Add metadata if present
-	if msg.UUID != "" {
+	// Add metadata if present and enabled
+	if options.ShowUUID && msg.UUID != "" {
 		sb.WriteString(fmt.Sprintf("*UUID: %s*\n\n", msg.UUID))
 	}
 

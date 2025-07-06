@@ -8,6 +8,7 @@ import (
 
 	"cclog/internal/formatter"
 	"cclog/internal/parser"
+	"cclog/pkg/types"
 )
 
 // Config represents command-line configuration
@@ -16,6 +17,8 @@ type Config struct {
 	OutputPath  string
 	IsDirectory bool
 	ShowHelp    bool
+	IncludeAll  bool
+	ShowUUID    bool
 }
 
 // ParseArgs parses command-line arguments and returns configuration
@@ -41,6 +44,10 @@ func ParseArgs(args []string) (Config, error) {
 			}
 			config.OutputPath = args[i+1]
 			i++ // Skip next argument as it's the output path
+		case "--include-all":
+			config.IncludeAll = true
+		case "--show-uuid":
+			config.ShowUUID = true
 		default:
 			if config.InputPath == "" {
 				config.InputPath = arg
@@ -75,7 +82,13 @@ func RunCommand(config Config) (string, error) {
 			return "", fmt.Errorf("failed to parse directory: %w", err)
 		}
 
-		markdown = formatter.FormatMultipleConversationsToMarkdown(logs)
+		// Apply filtering to all logs
+		filteredLogs := make([]*types.ConversationLog, len(logs))
+		for i, log := range logs {
+			filteredLogs[i] = formatter.FilterConversationLog(log, !config.IncludeAll)
+		}
+
+		markdown = formatter.FormatMultipleConversationsToMarkdownWithOptions(filteredLogs, formatter.FormatOptions{ShowUUID: config.ShowUUID})
 	} else {
 		// Parse single file
 		log, err := parser.ParseJSONLFile(config.InputPath)
@@ -83,7 +96,9 @@ func RunCommand(config Config) (string, error) {
 			return "", fmt.Errorf("failed to parse file: %w", err)
 		}
 
-		markdown = formatter.FormatConversationToMarkdown(log)
+		// Apply filtering
+		filteredLog := formatter.FilterConversationLog(log, !config.IncludeAll)
+		markdown = formatter.FormatConversationToMarkdownWithOptions(filteredLog, formatter.FormatOptions{ShowUUID: config.ShowUUID})
 	}
 
 	// Write output if specified
@@ -118,6 +133,8 @@ ARGUMENTS:
 OPTIONS:
     -d, --directory    Treat input as directory (parse all .jsonl files)
     -o, --output FILE  Write output to file instead of stdout
+    --include-all      Include all messages (no filtering of empty/system messages)
+    --show-uuid        Show UUID metadata for each message
     -h, --help         Show this help message
 
 EXAMPLES:
