@@ -45,10 +45,11 @@ func TestParseArgs(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "no arguments - should enable TUI mode by default",
+			name: "no arguments - should enable TUI mode and recursive mode by default",
 			args: []string{"cclog"},
 			expected: Config{
 				TUIMode: true,
+				Recursive: true,
 			},
 			wantErr: false,
 		},
@@ -134,6 +135,22 @@ func TestParseArgs(t *testing.T) {
 				TUIMode:   true,
 			},
 			wantErr: false,
+		},
+		{
+			name: "path option should set input path",
+			args: []string{"cclog", "--path", "/custom/path"},
+			expected: Config{
+				InputPath: "/custom/path",
+				TUIMode:   true,
+				Recursive: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "path option without value should return error",
+			args: []string{"cclog", "--path"},
+			expected: Config{},
+			wantErr: true,
 		},
 	}
 

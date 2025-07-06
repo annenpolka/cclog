@@ -27,10 +27,20 @@ type Config struct {
 // ParseArgs parses command-line arguments and returns configuration
 func ParseArgs(args []string) (Config, error) {
 	config := Config{}
+	hasPathOption := false
 	
-	// If no arguments provided, enable TUI mode by default
-	if len(args) < 2 {
+	// Check if --path option is used to determine default behavior
+	for i := 1; i < len(args); i++ {
+		if args[i] == "--path" {
+			hasPathOption = true
+			break
+		}
+	}
+	
+	// If no arguments provided or --path option is used, enable TUI mode and recursive mode by default
+	if len(args) < 2 || hasPathOption {
 		config.TUIMode = true
+		config.Recursive = true
 		// Continue to process default directory setup below
 	}
 	
@@ -62,6 +72,12 @@ func ParseArgs(args []string) (Config, error) {
 		case "-r", "--recursive":
 			config.Recursive = true
 			config.TUIMode = true
+		case "--path":
+			if i+1 >= len(args) {
+				return Config{}, fmt.Errorf("path flag requires a value")
+			}
+			config.InputPath = args[i+1]
+			i++ // Skip next argument as it's the input path
 		default:
 			if config.InputPath == "" {
 				config.InputPath = arg
@@ -187,7 +203,7 @@ USAGE:
 
 ARGUMENTS:
     [input]    Path to JSONL file or directory containing JSONL files
-               (If no input provided, opens interactive TUI mode)
+               (If no input provided, opens interactive TUI mode with recursive search)
 
 OPTIONS:
     -d, --directory    Treat input as directory (parse all .jsonl files)
@@ -197,11 +213,15 @@ OPTIONS:
     --show-title       Show conversation title as header
     --tui              Open interactive file picker (TUI mode)
     -r, --recursive    Recursively search for .jsonl files and open TUI mode
+    --path PATH        Specify directory path for TUI mode
     -h, --help         Show this help message
 
 EXAMPLES:
-    # Open interactive file picker (default behavior)
+    # Open interactive file picker with recursive search (default behavior)
     cclog
+
+    # Open TUI in specific directory with recursive search
+    cclog --path /path/to/logs
 
     # Convert single file to stdout
     cclog conversation.jsonl
@@ -212,13 +232,10 @@ EXAMPLES:
     # Convert all JSONL files in directory
     cclog -d /path/to/logs -o combined.md
 
-    # Recursively find and list all JSONL files (TUI mode enabled automatically)
+    # Recursively find and list all JSONL files (explicit recursive mode)
     cclog -r /path/to/logs
 
     # Open interactive file picker (explicit TUI mode)
     cclog --tui
-
-    # Open TUI in specific directory
-    cclog --tui /path/to/logs
 `)
 }
