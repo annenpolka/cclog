@@ -43,7 +43,7 @@ Thumbs.db
 # Built binaries
 /bin/
 /dist/
-cclog
+/cclog
 
 # Test coverage
 coverage.txt
