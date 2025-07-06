@@ -183,3 +183,32 @@ func TestRunCommandWithDirectory(t *testing.T) {
 		t.Error("Output should contain content from test2")
 	}
 }
+
+func TestGetDefaultTUIDirectory(t *testing.T) {
+	defaultDir := getDefaultTUIDirectory()
+	
+	// Should contain .claude/projects
+	if !strings.Contains(defaultDir, ".claude/projects") {
+		t.Errorf("Default directory should contain '.claude/projects', got: %s", defaultDir)
+	}
+	
+	// Should be an absolute path
+	if !filepath.IsAbs(defaultDir) {
+		t.Errorf("Default directory should be absolute path, got: %s", defaultDir)
+	}
+}
+
+func TestGetDefaultTUIDirectory_ValidPath(t *testing.T) {
+	defaultDir := getDefaultTUIDirectory()
+	
+	// Should be a valid path format
+	if defaultDir == "" {
+		t.Error("Default directory should not be empty")
+	}
+	
+	// Should end with projects
+	if !strings.HasSuffix(defaultDir, "projects") {
+		t.Errorf("Default directory should end with 'projects', got: %s", defaultDir)
+	}
+}
+

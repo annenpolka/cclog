@@ -32,6 +32,11 @@ func main() {
 		newConfig.InputPath = selectedFile
 		newConfig.TUIMode = false
 		
+		// Auto-detect if selection is a directory
+		if shouldSetDirectoryFlag(selectedFile) {
+			newConfig.IsDirectory = true
+		}
+		
 		output, err := cli.RunCommand(newConfig)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -59,4 +64,13 @@ func main() {
 	} else {
 		fmt.Printf("Output written to: %s\n", config.OutputPath)
 	}
+}
+
+// shouldSetDirectoryFlag checks if the given path is a directory
+func shouldSetDirectoryFlag(path string) bool {
+	stat, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return stat.IsDir()
 }

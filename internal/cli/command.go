@@ -64,10 +64,31 @@ func ParseArgs(args []string) (Config, error) {
 	
 	// Set default directory for TUI mode if no input path specified
 	if config.TUIMode && config.InputPath == "" {
-		config.InputPath = "."
+		defaultDir := getDefaultTUIDirectory()
+		// Ensure the directory exists
+		if err := ensureDefaultDirectoryExists(defaultDir); err != nil {
+			// If we can't create the directory, fall back to current directory
+			config.InputPath = "."
+		} else {
+			config.InputPath = defaultDir
+		}
 	}
 
 	return config, nil
+}
+
+// getDefaultTUIDirectory returns the default directory for TUI mode
+func getDefaultTUIDirectory() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "." // Fallback to current directory
+	}
+	return filepath.Join(home, ".claude", "projects")
+}
+
+// ensureDefaultDirectoryExists creates the directory if it doesn't exist
+func ensureDefaultDirectoryExists(dir string) error {
+	return os.MkdirAll(dir, 0755)
 }
 
 // RunCommand executes the main command logic

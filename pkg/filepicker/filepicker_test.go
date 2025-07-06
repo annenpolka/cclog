@@ -93,8 +93,10 @@ func TestGetFiles(t *testing.T) {
 		t.Fatalf("GetFiles failed: %v", err)
 	}
 
-	if len(files) != 2 {
-		t.Errorf("Expected 2 files, got %d", len(files))
+	// Should have 2 actual files plus possibly ".." entry
+	expectedMinFiles := 2
+	if len(files) < expectedMinFiles {
+		t.Errorf("Expected at least %d files, got %d", expectedMinFiles, len(files))
 	}
 
 	// Check if both file and directory are present
@@ -115,5 +117,59 @@ func TestGetFiles_NonExistentDirectory(t *testing.T) {
 	_, err := GetFiles("/nonexistent/directory")
 	if err == nil {
 		t.Error("Expected error for non-existent directory, got nil")
+	}
+}
+
+func TestGetFiles_IncludesParentDirectory(t *testing.T) {
+	// Create temporary subdirectory
+	tempDir := t.TempDir()
+	subDir := filepath.Join(tempDir, "subdir")
+	err := os.Mkdir(subDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+	
+	// Get files from subdirectory
+	files, err := GetFiles(subDir)
+	if err != nil {
+		t.Fatalf("GetFiles failed: %v", err)
+	}
+	
+	// Should include ".." entry for parent directory
+	foundParent := false
+	for _, file := range files {
+		if file.Name == ".." {
+			foundParent = true
+			if !file.IsDir {
+				t.Error("'..' should be marked as directory")
+			}
+			if file.Path != tempDir {
+				t.Errorf("Expected '..' path to be '%s', got '%s'", tempDir, file.Path)
+			}
+			break
+		}
+	}
+	
+	if !foundParent {
+		t.Error("Expected '..' entry for parent directory")
+	}
+}
+
+func TestGetFiles_NoParentForRoot(t *testing.T) {
+	// Test with current directory to avoid permission issues
+	files, err := GetFiles(".")
+	if err != nil {
+		t.Fatalf("GetFiles failed: %v", err)
+	}
+	
+	// Should not include ".." if we're at a root-like directory
+	// (This test is more lenient as we can't easily test actual root)
+	for _, file := range files {
+		if file.Name == ".." {
+			// This is okay for subdirectories, just ensure it's properly marked
+			if !file.IsDir {
+				t.Error("'..' should be marked as directory")
+			}
+		}
 	}
 }

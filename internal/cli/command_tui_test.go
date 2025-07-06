@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -42,8 +44,9 @@ func TestParseArgs_TUIModeDefaultDirectory(t *testing.T) {
 		t.Errorf("Expected no error, got %v", err)
 	}
 	
-	if config.InputPath != "." {
-		t.Errorf("Expected default InputPath to be '.', got '%s'", config.InputPath)
+	expectedDir := getDefaultTUIDirectory()
+	if config.InputPath != expectedDir {
+		t.Errorf("Expected default InputPath to be '%s', got '%s'", expectedDir, config.InputPath)
 	}
 }
 
@@ -63,5 +66,50 @@ func TestRunCommand_TUIMode(t *testing.T) {
 	
 	if output != "" {
 		t.Errorf("Expected empty output for TUI mode, got '%s'", output)
+	}
+}
+
+func TestEnsureDefaultDirectoryExists(t *testing.T) {
+	// Create a temporary directory to simulate user home
+	tempHome := t.TempDir()
+	testDir := filepath.Join(tempHome, ".claude", "projects")
+	
+	// Directory should not exist initially
+	if _, err := os.Stat(testDir); !os.IsNotExist(err) {
+		t.Errorf("Test directory should not exist initially")
+	}
+	
+	// Call the function to ensure directory exists
+	err := ensureDefaultDirectoryExists(testDir)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	
+	// Directory should exist now
+	if _, err := os.Stat(testDir); os.IsNotExist(err) {
+		t.Errorf("Directory should exist after calling ensureDefaultDirectoryExists")
+	}
+}
+
+func TestEnsureDefaultDirectoryExists_AlreadyExists(t *testing.T) {
+	// Create a temporary directory
+	tempDir := t.TempDir()
+	testDir := filepath.Join(tempDir, "existing")
+	
+	// Create the directory first
+	err := os.MkdirAll(testDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+	
+	// Call the function - should not error on existing directory
+	err = ensureDefaultDirectoryExists(testDir)
+	if err != nil {
+		t.Errorf("Expected no error for existing directory, got %v", err)
+	}
+	
+	// Directory should still exist
+	if _, err := os.Stat(testDir); os.IsNotExist(err) {
+		t.Errorf("Directory should still exist")
 	}
 }

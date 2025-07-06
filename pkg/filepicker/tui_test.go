@@ -1,6 +1,8 @@
 package filepicker
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -179,21 +181,19 @@ func TestModel_Integration_WithTeatest(t *testing.T) {
 	model.files = []FileInfo{
 		{Name: "file1.txt", Path: "/tmp/file1.txt", IsDir: false},
 		{Name: "file2.txt", Path: "/tmp/file2.txt", IsDir: false},
-		{Name: "dir1", Path: "/tmp/dir1", IsDir: true},
 	}
 	
 	tm := teatest.NewTestModel(t, model)
 	
-	// Navigate down twice and select
+	// Navigate down and select file with space
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
+	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
 	
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second*2))
 	
 	finalModel := tm.FinalModel(t).(Model)
-	if finalModel.selected != "/tmp/dir1" {
-		t.Errorf("Expected selection '/tmp/dir1', got '%s'", finalModel.selected)
+	if finalModel.selected != "/tmp/file2.txt" {
+		t.Errorf("Expected selection '/tmp/file2.txt', got '%s'", finalModel.selected)
 	}
 }
 
@@ -238,5 +238,167 @@ func TestModel_GetSelectedFile_NoSelection(t *testing.T) {
 	selectedPath := model.GetSelectedFile()
 	if selectedPath != "" {
 		t.Errorf("Expected empty string for no selection, got '%s'", selectedPath)
+	}
+}
+
+func TestModel_DirectoryNavigation(t *testing.T) {
+	// Create test directory structure
+	tempDir := t.TempDir()
+	subDir := filepath.Join(tempDir, "subdir")
+	err := os.Mkdir(subDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+	
+	model := NewModel(tempDir)
+	model.files = []FileInfo{
+		{Name: "subdir", Path: subDir, IsDir: true},
+		{Name: "file.txt", Path: filepath.Join(tempDir, "file.txt"), IsDir: false},
+	}
+	
+	// Test navigating into directory
+	model.cursor = 0 // Select the directory
+	
+	// Simulate enter key on directory
+	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	updatedModel, cmd := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	// Should navigate into directory and return load command
+	if cmd == nil {
+		t.Error("Should return load command when entering directory")
+	}
+	
+	// Directory should change to subdirectory
+	if m.dir != subDir {
+		t.Errorf("Expected directory to change to '%s', got '%s'", subDir, m.dir)
+	}
+	
+	// Cursor should reset to 0
+	if m.cursor != 0 {
+		t.Errorf("Expected cursor to reset to 0, got %d", m.cursor)
+	}
+}
+
+func TestModel_FileSelection(t *testing.T) {
+	model := NewModel(".")
+	model.files = []FileInfo{
+		{Name: "file.txt", Path: "/path/file.txt", IsDir: false},
+	}
+	model.cursor = 0
+	
+	// Simulate enter key on file
+	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	updatedModel, cmd := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	// Should select file and quit
+	if cmd == nil {
+		t.Error("Should return quit command when selecting file")
+	}
+	
+	if m.selected != "/path/file.txt" {
+		t.Errorf("Expected selected file '/path/file.txt', got '%s'", m.selected)
+	}
+}
+
+func TestModel_BackNavigation(t *testing.T) {
+	// Create test directory structure
+	tempDir := t.TempDir()
+	subDir := filepath.Join(tempDir, "subdir")
+	err := os.Mkdir(subDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+	
+	// Start from subdirectory
+	model := NewModel(subDir)
+	model.files = []FileInfo{
+		{Name: "..", Path: tempDir, IsDir: true},
+		{Name: "file.txt", Path: filepath.Join(subDir, "file.txt"), IsDir: false},
+	}
+	
+	// Test navigating back with ..
+	model.cursor = 0 // Select ".."
+	
+	// Simulate enter key on ".."
+	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	updatedModel, cmd := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	// Should navigate back and return load command
+	if cmd == nil {
+		t.Error("Should return load command when navigating back")
+	}
+	
+	// Directory should change back to parent
+	if m.dir != tempDir {
+		t.Errorf("Expected directory to change back to '%s', got '%s'", tempDir, m.dir)
+	}
+}
+
+func TestModel_BackNavigationFromRoot(t *testing.T) {
+	// Test that ".." doesn't appear at filesystem root
+	// Simulate loading files (normally done by loadFiles command)
+	files, _ := GetFiles("/")
+	
+	// Check that ".." is not in the list
+	for _, file := range files {
+		if file.Name == ".." {
+			t.Error("'..' should not appear when at root directory")
+		}
+	}
+}
+
+func TestModel_SpaceKeyFileSelection(t *testing.T) {
+	model := NewModel(".")
+	model.files = []FileInfo{
+		{Name: "file.txt", Path: "/path/file.txt", IsDir: false},
+	}
+	model.cursor = 0
+	
+	// Simulate space key on file
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}}
+	updatedModel, cmd := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	// Should select file and quit
+	if cmd == nil {
+		t.Error("Should return quit command when selecting file with space")
+	}
+	
+	if m.selected != "/path/file.txt" {
+		t.Errorf("Expected selected file '/path/file.txt', got '%s'", m.selected)
+	}
+}
+
+func TestModel_SpaceKeyOnDirectory(t *testing.T) {
+	// Create test directory structure
+	tempDir := t.TempDir()
+	subDir := filepath.Join(tempDir, "subdir")
+	err := os.Mkdir(subDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+	
+	model := NewModel(tempDir)
+	model.files = []FileInfo{
+		{Name: "subdir", Path: subDir, IsDir: true},
+	}
+	model.cursor = 0
+	
+	// Simulate space key on directory - should NOT navigate (different from Enter)
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}}
+	updatedModel, cmd := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	// Should NOT navigate into directory with space
+	if cmd != nil {
+		t.Error("Should not return command when pressing space on directory")
+	}
+	
+	// Directory should not change
+	if m.dir != tempDir {
+		t.Error("Directory should not change when pressing space on directory")
 	}
 }

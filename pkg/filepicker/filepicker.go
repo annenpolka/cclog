@@ -2,6 +2,7 @@ package filepicker
 
 import (
 	"os"
+	"path/filepath"
 )
 
 type FileInfo struct {
@@ -39,6 +40,23 @@ func GetFiles(dir string) ([]FileInfo, error) {
 	}
 
 	var files []FileInfo
+	
+	// Add parent directory entry if not at root
+	absDir, err := filepath.Abs(dir)
+	if err == nil {
+		parentDir := filepath.Dir(absDir)
+		// Only add ".." if not at root and parent is different
+		if parentDir != absDir && parentDir != "." {
+			parentInfo := FileInfo{
+				Name:  "..",
+				Path:  parentDir,
+				IsDir: true,
+				Size:  0,
+			}
+			files = append(files, parentInfo)
+		}
+	}
+	
 	for _, entry := range entries {
 		info, err := entry.Info()
 		if err != nil {
@@ -47,7 +65,7 @@ func GetFiles(dir string) ([]FileInfo, error) {
 
 		fileInfo := FileInfo{
 			Name:  entry.Name(),
-			Path:  dir + "/" + entry.Name(),
+			Path:  filepath.Join(dir, entry.Name()),
 			IsDir: entry.IsDir(),
 			Size:  info.Size(),
 		}

@@ -41,8 +41,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			if len(m.files) > 0 {
-				m.selected = m.files[m.cursor].Path
-				return m, tea.Quit
+				selectedItem := m.files[m.cursor]
+				if selectedItem.IsDir {
+					// Navigate into directory
+					m.dir = selectedItem.Path
+					m.cursor = 0
+					return m, loadFiles(m.dir)
+				} else {
+					// Select file and quit
+					m.selected = selectedItem.Path
+					return m, tea.Quit
+				}
+			}
+		case " ":
+			// Space key: select file only (don't navigate directories)
+			if len(m.files) > 0 {
+				selectedItem := m.files[m.cursor]
+				if !selectedItem.IsDir {
+					// Select file and quit
+					m.selected = selectedItem.Path
+					return m, tea.Quit
+				}
+				// Do nothing for directories with space key
 			}
 		}
 	case filesLoadedMsg:
@@ -53,8 +73,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	var s strings.Builder
-	s.WriteString("Select a file:\n\n")
 	
+	// Show current directory
+	s.WriteString("📁 " + m.dir + "\n\n")
+	
+	// Show files list
 	for i, file := range m.files {
 		cursor := " "
 		if i == m.cursor {
@@ -63,7 +86,14 @@ func (m Model) View() string {
 		s.WriteString(cursor + " " + file.Title() + "\n")
 	}
 	
-	s.WriteString("\nPress q to quit, enter to select")
+	// Show help text
+	s.WriteString("\n")
+	s.WriteString("Controls:\n")
+	s.WriteString("  ↑/↓, j/k: Navigate\n")
+	s.WriteString("  Enter: Open folder / Select file\n")
+	s.WriteString("  Space: Select file only\n")
+	s.WriteString("  q: Quit\n")
+	
 	return s.String()
 }
 
