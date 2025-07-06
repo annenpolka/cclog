@@ -435,8 +435,8 @@ func TestModel_NoTruncationWhenFilesUnderLimit(t *testing.T) {
 	
 	view := model.View()
 	
-	// Should NOT show "more above/below" message
-	if strings.Contains(view, "more above") || strings.Contains(view, "more below") {
+	// Should NOT show "more below" message (more above is removed)
+	if strings.Contains(view, "more below") {
 		t.Errorf("View should NOT show scroll messages when files are under limit. View: %s", view)
 	}
 }
@@ -473,10 +473,7 @@ func TestModel_TruncationWithCursorPositioning(t *testing.T) {
 		t.Errorf("View should contain cursor indicator even when cursor is at the end. View: %s", view)
 	}
 	
-	// Should show scroll message for items above
-	if !strings.Contains(view, "more above") {
-		t.Errorf("View should show 'more above' message when cursor is at the end. View: %s", view)
-	}
+	// Should show scroll message for items above (removed - no longer displayed)
 }
 
 func TestModel_TruncationBounds(t *testing.T) {
@@ -502,8 +499,8 @@ func TestModel_TruncationBounds(t *testing.T) {
 	
 	view := model.View()
 	
-	// Should NOT show scroll messages at exact limit
-	if strings.Contains(view, "more above") || strings.Contains(view, "more below") {
+	// Should NOT show scroll messages at exact limit (more above is removed)
+	if strings.Contains(view, "more below") {
 		t.Errorf("View should NOT show scroll messages at exact limit. View: %s", view)
 	}
 	

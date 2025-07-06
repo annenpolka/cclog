@@ -189,9 +189,7 @@ func (m Model) View() string {
 	
 	// Show scroll indicators
 	if totalFiles > m.maxDisplayFiles {
-		if m.scrollOffset > 0 {
-			s.WriteString("↑ " + strconv.Itoa(m.scrollOffset) + " more above\n")
-		}
+		// Removed "more above" display
 	}
 	
 	// Show files list with scrolling
