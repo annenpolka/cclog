@@ -26,6 +26,7 @@ type Model struct {
 	useCompactLayout bool
 	contentAlignment string
 	maxTitleChars   int
+	preview         *PreviewModel
 }
 
 func NewModel(dir string, recursive bool) Model {
@@ -41,6 +42,7 @@ func NewModel(dir string, recursive bool) Model {
 		useCompactLayout: false, // Default to full layout
 		contentAlignment: "left", // Default alignment
 		maxTitleChars:    40, // Default title character limit
+		preview:          NewPreviewModel(),
 	}
 }
 
@@ -52,22 +54,45 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+	
+	// Update preview
+	m.preview, cmd = m.preview.Update(msg)
+	if cmd != nil {
+		cmds = append(cmds, cmd)
+	}
+	
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.terminalWidth = msg.Width
 		m.terminalHeight = msg.Height
 		m.updateDisplaySettings()
-		return m, nil
+		// Update preview size
+		m.updatePreviewSize()
+		return m, tea.Batch(cmds...)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
+		case "p":
+			// Toggle preview
+			m.preview.SetVisible(!m.preview.IsVisible())
+			// Update preview content if visible
+			if m.preview.IsVisible() {
+				m.updatePreviewContent()
+			}
+			return m, tea.Batch(cmds...)
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
 				// Scroll up if cursor goes above visible range
 				if m.cursor < m.scrollOffset {
 					m.scrollOffset = m.cursor
+				}
+				// Update preview if visible
+				if m.preview.IsVisible() {
+					m.updatePreviewContent()
 				}
 			}
 		case "down", "j":
@@ -76,6 +101,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Scroll down if cursor goes below visible range
 				if m.cursor >= m.scrollOffset+m.maxDisplayFiles {
 					m.scrollOffset = m.cursor - m.maxDisplayFiles + 1
+				}
+				// Update preview if visible
+				if m.preview.IsVisible() {
+					m.updatePreviewContent()
 				}
 			}
 		case "enter":
@@ -92,17 +121,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, convertAndOpenInEditor(selectedItem.Path)
 				}
 			}
-		case " ":
-			// Space key: select file only (don't navigate directories)
-			if len(m.files) > 0 {
-				selectedItem := m.files[m.cursor]
-				if !selectedItem.IsDir {
-					// Select file and quit
-					m.selected = selectedItem.Path
-					return m, tea.Quit
-				}
-				// Do nothing for directories with space key
-			}
 		}
 	case filesLoadedMsg:
 		m.files = msg.files
@@ -111,8 +129,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cursor = 0
 		}
 		m.scrollOffset = 0
+		// Initialize preview size and content if visible
+		if m.preview.IsVisible() {
+			m.updatePreviewSize()
+			m.updatePreviewContent()
+		}
 	}
-	return m, nil
+	return m, tea.Batch(cmds...)
 }
 
 func (m Model) View() string {
@@ -134,6 +157,18 @@ func (m Model) View() string {
 	}
 	
 	s.WriteString("📁 " + dirPath + "\n\n")
+	
+	// Calculate available space for file list
+	listHeight := m.terminalHeight - 5 // Reserve space for header and help
+	if m.preview.IsVisible() {
+		listHeight = listHeight / 2 // Split screen when preview is visible
+	}
+	
+	// Adjust maxDisplayFiles based on available space
+	originalMaxDisplay := m.maxDisplayFiles
+	if listHeight > 0 && listHeight < m.maxDisplayFiles {
+		m.maxDisplayFiles = listHeight
+	}
 	
 	// Calculate display range with scrolling
 	totalFiles := len(m.files)
@@ -179,20 +214,40 @@ func (m Model) View() string {
 		}
 	}
 	
+	// Restore original maxDisplayFiles
+	m.maxDisplayFiles = originalMaxDisplay
+	
+	// Show preview if visible
+	if m.preview.IsVisible() {
+		s.WriteString("\n" + strings.Repeat("─", m.terminalWidth) + "\n")
+		s.WriteString(m.preview.View())
+	}
+	
 	// Show help text based on layout
 	if !m.useCompactLayout {
 		s.WriteString("\n")
 		s.WriteString("Controls:\n")
 		s.WriteString("  ↑/↓, j/k: Navigate\n")
 		s.WriteString("  Enter: Open folder / Open file in editor\n")
-		s.WriteString("  Space: Select file only\n")
+		s.WriteString("  p: Toggle preview\n")
+		if m.preview.IsVisible() {
+			s.WriteString("  d/u: Scroll preview down/up\n")
+		}
 		s.WriteString("  q: Quit\n")
 	} else if m.terminalWidth < 40 {
 		// Very narrow: minimal help
-		s.WriteString("\nj/k:Nav Enter:Open q:Quit")
+		if m.preview.IsVisible() {
+			s.WriteString("\nj/k:Nav d/u:Scroll p:Preview q:Quit")
+		} else {
+			s.WriteString("\nj/k:Nav Enter:Open p:Preview q:Quit")
+		}
 	} else {
 		// Compact: abbreviated help
-		s.WriteString("\nNav:↑↓/jk Open:Enter Select:Space Quit:q")
+		if m.preview.IsVisible() {
+			s.WriteString("\nNav:↑↓/jk Open:Enter Preview:p Scroll:d/u Quit:q")
+		} else {
+			s.WriteString("\nNav:↑↓/jk Open:Enter Preview:p Quit:q")
+		}
 	}
 	
 	return s.String()
@@ -429,6 +484,51 @@ func (m Model) formatResponsiveLine(cursor, title string, availableWidth int) st
 	return line
 }
 
+
+// updatePreviewSize adjusts the preview size based on terminal dimensions
+func (m *Model) updatePreviewSize() {
+	if m.preview == nil {
+		return
+	}
+	
+	previewWidth := m.terminalWidth - 4 // Account for borders
+	previewHeight := (m.terminalHeight / 2) - 3 // Split screen, account for borders
+	
+	if previewWidth < 0 {
+		previewWidth = 0
+	}
+	if previewHeight < 0 {
+		previewHeight = 0
+	}
+	
+	m.preview.SetSize(previewWidth, previewHeight)
+}
+
+// updatePreviewContent updates the preview content based on current selection
+func (m *Model) updatePreviewContent() {
+	if m.preview == nil || !m.preview.IsVisible() || len(m.files) == 0 {
+		return
+	}
+	
+	selectedFile := m.files[m.cursor]
+	if selectedFile.IsDir {
+		// Clear preview for directories
+		m.preview.SetContent("")
+		return
+	}
+	
+	// Generate preview for JSONL files
+	if strings.HasSuffix(selectedFile.Path, ".jsonl") {
+		content, err := GeneratePreview(selectedFile.Path)
+		if err != nil {
+			m.preview.SetContent("Error generating preview: " + err.Error())
+		} else {
+			m.preview.SetContent(content)
+		}
+	} else {
+		m.preview.SetContent("Preview not available for this file type")
+	}
+}
 
 // min returns the smaller of two integers
 func min(a, b int) int {

@@ -187,15 +187,16 @@ func TestModel_Integration_WithTeatest(t *testing.T) {
 	
 	tm := teatest.NewTestModel(t, model)
 	
-	// Navigate down and select file with space
+	// Navigate down and quit
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 	
 	tm.WaitFinished(t, teatest.WithFinalTimeout(time.Second*2))
 	
+	// Check that cursor moved correctly
 	finalModel := tm.FinalModel(t).(Model)
-	if finalModel.selected != "/tmp/file2.txt" {
-		t.Errorf("Expected selection '/tmp/file2.txt', got '%s'", finalModel.selected)
+	if finalModel.cursor != 1 {
+		t.Errorf("Expected cursor at position 1, got %d", finalModel.cursor)
 	}
 }
 
@@ -353,58 +354,6 @@ func TestModel_BackNavigationFromRoot(t *testing.T) {
 	}
 }
 
-func TestModel_SpaceKeyFileSelection(t *testing.T) {
-	model := NewModel(".", false)
-	model.files = []FileInfo{
-		{Name: "file.txt", Path: "/path/file.txt", IsDir: false},
-	}
-	model.cursor = 0
-	
-	// Simulate space key on file
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}}
-	updatedModel, cmd := model.Update(msg)
-	m := updatedModel.(Model)
-	
-	// Should select file and quit
-	if cmd == nil {
-		t.Error("Should return quit command when selecting file with space")
-	}
-	
-	if m.selected != "/path/file.txt" {
-		t.Errorf("Expected selected file '/path/file.txt', got '%s'", m.selected)
-	}
-}
-
-func TestModel_SpaceKeyOnDirectory(t *testing.T) {
-	// Create test directory structure
-	tempDir := t.TempDir()
-	subDir := filepath.Join(tempDir, "subdir")
-	err := os.Mkdir(subDir, 0755)
-	if err != nil {
-		t.Fatalf("Failed to create subdirectory: %v", err)
-	}
-	
-	model := NewModel(tempDir, false)
-	model.files = []FileInfo{
-		{Name: "subdir", Path: subDir, IsDir: true},
-	}
-	model.cursor = 0
-	
-	// Simulate space key on directory - should NOT navigate (different from Enter)
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}}
-	updatedModel, cmd := model.Update(msg)
-	m := updatedModel.(Model)
-	
-	// Should NOT navigate into directory with space
-	if cmd != nil {
-		t.Error("Should not return command when pressing space on directory")
-	}
-	
-	// Directory should not change
-	if m.dir != tempDir {
-		t.Error("Directory should not change when pressing space on directory")
-	}
-}
 
 func TestModel_EditorOpening(t *testing.T) {
 	// Test that editor command is properly created
@@ -444,14 +393,20 @@ func TestModel_FileTruncation(t *testing.T) {
 	}
 	model.files = files
 	
-	// Set maxDisplayFiles to 20
+	// Set terminal size to ensure predictable behavior without preview
+	model.terminalWidth = 80
+	model.terminalHeight = 40
+	model.updateDisplaySettings()
+	
+	// Set maxDisplayFiles to 20 and ensure preview is off
 	model.maxDisplayFiles = 20
+	model.preview.SetVisible(false)
 	
 	view := model.View()
 	
 	// Should show "X more below" message
 	if !strings.Contains(view, "10 more below") {
-		t.Error("View should show '10 more below' message when 10 files are below visible range")
+		t.Errorf("View should show '10 more below' message when 10 files are below visible range. View: %s", view)
 	}
 }
 
@@ -469,6 +424,12 @@ func TestModel_NoTruncationWhenFilesUnderLimit(t *testing.T) {
 	}
 	model.files = files
 	
+	// Set terminal size and disable preview for predictable behavior
+	model.terminalWidth = 80
+	model.terminalHeight = 40
+	model.updateDisplaySettings()
+	model.preview.SetVisible(false)
+	
 	// Set maxDisplayFiles to 20
 	model.maxDisplayFiles = 20
 	
@@ -476,7 +437,7 @@ func TestModel_NoTruncationWhenFilesUnderLimit(t *testing.T) {
 	
 	// Should NOT show "more above/below" message
 	if strings.Contains(view, "more above") || strings.Contains(view, "more below") {
-		t.Error("View should NOT show scroll messages when files are under limit")
+		t.Errorf("View should NOT show scroll messages when files are under limit. View: %s", view)
 	}
 }
 
@@ -493,7 +454,13 @@ func TestModel_TruncationWithCursorPositioning(t *testing.T) {
 		}
 	}
 	model.files = files
+	
+	// Set terminal size to ensure predictable behavior
+	model.terminalWidth = 80
+	model.terminalHeight = 40
+	model.updateDisplaySettings()
 	model.maxDisplayFiles = 20
+	model.preview.SetVisible(false)
 	
 	// Position cursor at the end and set appropriate scroll
 	model.cursor = 29
@@ -503,17 +470,23 @@ func TestModel_TruncationWithCursorPositioning(t *testing.T) {
 	
 	// Should show cursor at the visible range
 	if !strings.Contains(view, ">") {
-		t.Error("View should contain cursor indicator even when cursor is at the end")
+		t.Errorf("View should contain cursor indicator even when cursor is at the end. View: %s", view)
 	}
 	
 	// Should show scroll message for items above
 	if !strings.Contains(view, "more above") {
-		t.Error("View should show 'more above' message when cursor is at the end")
+		t.Errorf("View should show 'more above' message when cursor is at the end. View: %s", view)
 	}
 }
 
 func TestModel_TruncationBounds(t *testing.T) {
 	model := NewModel(".", false)
+	
+	// Set terminal size to ensure predictable behavior
+	model.terminalWidth = 80
+	model.terminalHeight = 40
+	model.updateDisplaySettings()
+	model.preview.SetVisible(false)
 	
 	// Test with exact limit
 	files := make([]FileInfo, 20)
@@ -531,7 +504,7 @@ func TestModel_TruncationBounds(t *testing.T) {
 	
 	// Should NOT show scroll messages at exact limit
 	if strings.Contains(view, "more above") || strings.Contains(view, "more below") {
-		t.Error("View should NOT show scroll messages at exact limit")
+		t.Errorf("View should NOT show scroll messages at exact limit. View: %s", view)
 	}
 	
 	// Test with one over limit
@@ -546,7 +519,7 @@ func TestModel_TruncationBounds(t *testing.T) {
 	
 	// Should show scroll message when over limit
 	if !strings.Contains(view, "more below") {
-		t.Error("View should show 'more below' message when one over limit")
+		t.Errorf("View should show 'more below' message when one over limit. View: %s", view)
 	}
 }
 
@@ -630,6 +603,13 @@ func TestModel_ScrollView(t *testing.T) {
 		}
 	}
 	model.files = files
+	
+	// Set terminal size and disable preview for predictable behavior
+	model.terminalWidth = 80
+	model.terminalHeight = 40
+	model.updateDisplaySettings()
+	model.preview.SetVisible(false)
+	
 	model.maxDisplayFiles = 10
 	model.scrollOffset = 5
 	model.cursor = 8
@@ -638,11 +618,11 @@ func TestModel_ScrollView(t *testing.T) {
 	
 	// Should show files 5-14 (scrollOffset 5, maxDisplayFiles 10)
 	if !strings.Contains(view, "file5.txt") {
-		t.Error("View should contain file5.txt when scrollOffset is 5")
+		t.Errorf("View should contain file5.txt when scrollOffset is 5. View: %s", view)
 	}
 	
 	if !strings.Contains(view, "file14.txt") {
-		t.Error("View should contain file14.txt when scrollOffset is 5")
+		t.Errorf("View should contain file14.txt when scrollOffset is 5. View: %s", view)
 	}
 	
 	// Should NOT show file4.txt (before scroll range)
@@ -1143,5 +1123,120 @@ func TestModel_NoCharacterSpacingExpansion(t *testing.T) {
 	// Should show normal title with more characters allowed
 	if !strings.Contains(view, "Normal title") {
 		t.Error("Should show normal title without character expansion")
+	}
+}
+
+// TDD Red Phase: Test for preview functionality integration
+func TestModel_PreviewToggle(t *testing.T) {
+	model := NewModel(".", false)
+	model.files = []FileInfo{
+		{
+			Name:    "test.jsonl",
+			Path:    "/path/test.jsonl",
+			IsDir:   false,
+			ModTime: time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+		},
+	}
+	
+	// Preview should be visible by default
+	if !model.preview.IsVisible() {
+		t.Error("Preview should be visible by default")
+	}
+	
+	// Test 'p' key to toggle preview off
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}}
+	updatedModel, _ := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	// Should have preview disabled
+	if m.preview.IsVisible() {
+		t.Error("Preview should be hidden after pressing 'p'")
+	}
+	
+	// Toggle again to enable
+	updatedModel, _ = m.Update(msg)
+	m = updatedModel.(Model)
+	
+	// Should have preview enabled again
+	if !m.preview.IsVisible() {
+		t.Error("Preview should be visible after pressing 'p' again")
+	}
+}
+
+func TestModel_PreviewContentUpdate(t *testing.T) {
+	model := NewModel(".", false)
+	model.files = []FileInfo{
+		{
+			Name:    "test.jsonl",
+			Path:    "/path/test.jsonl",
+			IsDir:   false,
+			ModTime: time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+		},
+	}
+	
+	// Preview should be visible by default
+	if !model.preview.IsVisible() {
+		t.Error("Preview should be visible by default")
+	}
+	
+	// Moving cursor should update preview content
+	model.cursor = 0
+	msg := tea.KeyMsg{Type: tea.KeyDown}
+	updatedModel, _ := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	// Preview content should be updated (in real implementation)
+	// This test verifies the structure is in place
+	if !m.preview.IsVisible() {
+		t.Error("Preview should remain visible after cursor movement")
+	}
+}
+
+func TestModel_PreviewLayoutAdjustment(t *testing.T) {
+	model := NewModel(".", false)
+	model.files = []FileInfo{
+		{
+			Name:    "test.jsonl",
+			Path:    "/path/test.jsonl",
+			IsDir:   false,
+			ModTime: time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+		},
+	}
+	
+	// Preview should be enabled by default
+	if !model.preview.IsVisible() {
+		t.Error("Preview should be visible by default")
+	}
+	
+	// Test window size adjustment with preview enabled
+	wideMsg := tea.WindowSizeMsg{Width: 120, Height: 40}
+	updatedModel, _ := model.Update(wideMsg)
+	m := updatedModel.(Model)
+	
+	// Preview should adjust to new window size
+	width, height := m.preview.GetSize()
+	if width == 0 || height == 0 {
+		t.Error("Preview should have valid size after window resize")
+	}
+}
+
+func TestModel_PreviewWithDirectorySelection(t *testing.T) {
+	model := NewModel(".", false)
+	model.files = []FileInfo{
+		{
+			Name:  "testdir",
+			Path:  "/path/testdir",
+			IsDir: true,
+		},
+	}
+	
+	// Preview should be visible by default
+	if !model.preview.IsVisible() {
+		t.Error("Preview should be visible by default")
+	}
+	
+	// Content should be empty for directories
+	if model.preview.GetContent() != "" {
+		t.Error("Preview content should be empty for directories")
 	}
 }
