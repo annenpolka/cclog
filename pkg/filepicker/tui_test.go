@@ -1,6 +1,7 @@
 package filepicker
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -426,5 +427,311 @@ func TestModel_EditorOpening(t *testing.T) {
 	// Should not set selected file
 	if m.selected != "" {
 		t.Errorf("Expected no selection when opening editor, got '%s'", m.selected)
+	}
+}
+
+func TestModel_FileTruncation(t *testing.T) {
+	model := NewModel(".", false)
+	
+	// Create large file list (30 files)
+	files := make([]FileInfo, 30)
+	for i := 0; i < 30; i++ {
+		files[i] = FileInfo{
+			Name:  fmt.Sprintf("file%d.txt", i),
+			Path:  fmt.Sprintf("/tmp/file%d.txt", i),
+			IsDir: false,
+		}
+	}
+	model.files = files
+	
+	// Set maxDisplayFiles to 20
+	model.maxDisplayFiles = 20
+	
+	view := model.View()
+	
+	// Should show "X more below" message
+	if !strings.Contains(view, "10 more below") {
+		t.Error("View should show '10 more below' message when 10 files are below visible range")
+	}
+}
+
+func TestModel_NoTruncationWhenFilesUnderLimit(t *testing.T) {
+	model := NewModel(".", false)
+	
+	// Create small file list (10 files)
+	files := make([]FileInfo, 10)
+	for i := 0; i < 10; i++ {
+		files[i] = FileInfo{
+			Name:  fmt.Sprintf("file%d.txt", i),
+			Path:  fmt.Sprintf("/tmp/file%d.txt", i),
+			IsDir: false,
+		}
+	}
+	model.files = files
+	
+	// Set maxDisplayFiles to 20
+	model.maxDisplayFiles = 20
+	
+	view := model.View()
+	
+	// Should NOT show "more above/below" message
+	if strings.Contains(view, "more above") || strings.Contains(view, "more below") {
+		t.Error("View should NOT show scroll messages when files are under limit")
+	}
+}
+
+func TestModel_TruncationWithCursorPositioning(t *testing.T) {
+	model := NewModel(".", false)
+	
+	// Create large file list (30 files)
+	files := make([]FileInfo, 30)
+	for i := 0; i < 30; i++ {
+		files[i] = FileInfo{
+			Name:  fmt.Sprintf("file%d.txt", i),
+			Path:  fmt.Sprintf("/tmp/file%d.txt", i),
+			IsDir: false,
+		}
+	}
+	model.files = files
+	model.maxDisplayFiles = 20
+	
+	// Position cursor at the end and set appropriate scroll
+	model.cursor = 29
+	model.scrollOffset = 10 // Show files 10-29
+	
+	view := model.View()
+	
+	// Should show cursor at the visible range
+	if !strings.Contains(view, ">") {
+		t.Error("View should contain cursor indicator even when cursor is at the end")
+	}
+	
+	// Should show scroll message for items above
+	if !strings.Contains(view, "more above") {
+		t.Error("View should show 'more above' message when cursor is at the end")
+	}
+}
+
+func TestModel_TruncationBounds(t *testing.T) {
+	model := NewModel(".", false)
+	
+	// Test with exact limit
+	files := make([]FileInfo, 20)
+	for i := 0; i < 20; i++ {
+		files[i] = FileInfo{
+			Name:  fmt.Sprintf("file%d.txt", i),
+			Path:  fmt.Sprintf("/tmp/file%d.txt", i),
+			IsDir: false,
+		}
+	}
+	model.files = files
+	model.maxDisplayFiles = 20
+	
+	view := model.View()
+	
+	// Should NOT show scroll messages at exact limit
+	if strings.Contains(view, "more above") || strings.Contains(view, "more below") {
+		t.Error("View should NOT show scroll messages at exact limit")
+	}
+	
+	// Test with one over limit
+	files = append(files, FileInfo{
+		Name:  "file20.txt",
+		Path:  "/tmp/file20.txt",
+		IsDir: false,
+	})
+	model.files = files
+	
+	view = model.View()
+	
+	// Should show scroll message when over limit
+	if !strings.Contains(view, "more below") {
+		t.Error("View should show 'more below' message when one over limit")
+	}
+}
+
+func TestModel_ScrollDown(t *testing.T) {
+	model := NewModel(".", false)
+	
+	// Create 30 files
+	files := make([]FileInfo, 30)
+	for i := 0; i < 30; i++ {
+		files[i] = FileInfo{
+			Name:  fmt.Sprintf("file%d.txt", i),
+			Path:  fmt.Sprintf("/tmp/file%d.txt", i),
+			IsDir: false,
+		}
+	}
+	model.files = files
+	model.maxDisplayFiles = 10
+	
+	// Move cursor to position 9 (last visible item)
+	model.cursor = 9
+	
+	// Move down - should scroll the view
+	msg := tea.KeyMsg{Type: tea.KeyDown}
+	updatedModel, _ := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	// Cursor should be at position 10
+	if m.cursor != 10 {
+		t.Errorf("Expected cursor at position 10, got %d", m.cursor)
+	}
+	
+	// Scroll offset should be 1
+	if m.scrollOffset != 1 {
+		t.Errorf("Expected scrollOffset to be 1, got %d", m.scrollOffset)
+	}
+}
+
+func TestModel_ScrollUp(t *testing.T) {
+	model := NewModel(".", false)
+	
+	// Create 30 files
+	files := make([]FileInfo, 30)
+	for i := 0; i < 30; i++ {
+		files[i] = FileInfo{
+			Name:  fmt.Sprintf("file%d.txt", i),
+			Path:  fmt.Sprintf("/tmp/file%d.txt", i),
+			IsDir: false,
+		}
+	}
+	model.files = files
+	model.maxDisplayFiles = 10
+	model.scrollOffset = 5
+	model.cursor = 5 // At top of visible range
+	
+	// Move up - should scroll the view
+	msg := tea.KeyMsg{Type: tea.KeyUp}
+	updatedModel, _ := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	// Cursor should be at position 4
+	if m.cursor != 4 {
+		t.Errorf("Expected cursor at position 4, got %d", m.cursor)
+	}
+	
+	// Scroll offset should be 4
+	if m.scrollOffset != 4 {
+		t.Errorf("Expected scrollOffset to be 4, got %d", m.scrollOffset)
+	}
+}
+
+func TestModel_ScrollView(t *testing.T) {
+	model := NewModel(".", false)
+	
+	// Create 30 files
+	files := make([]FileInfo, 30)
+	for i := 0; i < 30; i++ {
+		files[i] = FileInfo{
+			Name:  fmt.Sprintf("file%d.txt", i),
+			Path:  fmt.Sprintf("/tmp/file%d.txt", i),
+			IsDir: false,
+		}
+	}
+	model.files = files
+	model.maxDisplayFiles = 10
+	model.scrollOffset = 5
+	model.cursor = 8
+	
+	view := model.View()
+	
+	// Should show files 5-14 (scrollOffset 5, maxDisplayFiles 10)
+	if !strings.Contains(view, "file5.txt") {
+		t.Error("View should contain file5.txt when scrollOffset is 5")
+	}
+	
+	if !strings.Contains(view, "file14.txt") {
+		t.Error("View should contain file14.txt when scrollOffset is 5")
+	}
+	
+	// Should NOT show file4.txt (before scroll range)
+	if strings.Contains(view, "file4.txt") {
+		t.Error("View should NOT contain file4.txt when scrollOffset is 5")
+	}
+	
+	// Should show cursor at position 8
+	if !strings.Contains(view, "> file8.txt") {
+		t.Error("View should show cursor at file8.txt")
+	}
+}
+
+func TestModel_ScrollBounds(t *testing.T) {
+	model := NewModel(".", false)
+	
+	// Create 30 files
+	files := make([]FileInfo, 30)
+	for i := 0; i < 30; i++ {
+		files[i] = FileInfo{
+			Name:  fmt.Sprintf("file%d.txt", i),
+			Path:  fmt.Sprintf("/tmp/file%d.txt", i),
+			IsDir: false,
+		}
+	}
+	model.files = files
+	model.maxDisplayFiles = 10
+	
+	// Test scroll at top - should not scroll up
+	model.cursor = 0
+	model.scrollOffset = 0
+	
+	msg := tea.KeyMsg{Type: tea.KeyUp}
+	updatedModel, _ := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	if m.cursor != 0 {
+		t.Errorf("Cursor should stay at 0, got %d", m.cursor)
+	}
+	
+	if m.scrollOffset != 0 {
+		t.Errorf("ScrollOffset should stay at 0, got %d", m.scrollOffset)
+	}
+	
+	// Test scroll at bottom - should not scroll down
+	model.cursor = 29
+	model.scrollOffset = 20 // Max scroll position for 30 files, 10 display
+	
+	msg = tea.KeyMsg{Type: tea.KeyDown}
+	updatedModel, _ = model.Update(msg)
+	m = updatedModel.(Model)
+	
+	if m.cursor != 29 {
+		t.Errorf("Cursor should stay at 29, got %d", m.cursor)
+	}
+	
+	if m.scrollOffset != 20 {
+		t.Errorf("ScrollOffset should stay at 20, got %d", m.scrollOffset)
+	}
+}
+
+func TestModel_ScrollReset(t *testing.T) {
+	model := NewModel(".", false)
+	
+	// Create 30 files
+	files := make([]FileInfo, 30)
+	for i := 0; i < 30; i++ {
+		files[i] = FileInfo{
+			Name:  fmt.Sprintf("file%d.txt", i),
+			Path:  fmt.Sprintf("/tmp/file%d.txt", i),
+			IsDir: false,
+		}
+	}
+	model.files = files
+	model.maxDisplayFiles = 10
+	model.scrollOffset = 5
+	model.cursor = 15
+	
+	// Load new files - should reset scroll
+	msg := filesLoadedMsg{files: files[:10]} // Only 10 files now
+	updatedModel, _ := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	// Should reset scroll and cursor
+	if m.scrollOffset != 0 {
+		t.Errorf("ScrollOffset should reset to 0, got %d", m.scrollOffset)
+	}
+	
+	if m.cursor != 0 {
+		t.Errorf("Cursor should reset to 0, got %d", m.cursor)
 	}
 }

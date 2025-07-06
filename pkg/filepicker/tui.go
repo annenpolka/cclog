@@ -3,6 +3,7 @@ package filepicker
 import (
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -11,19 +12,23 @@ import (
 )
 
 type Model struct {
-	dir       string
-	files     []FileInfo
-	cursor    int
-	selected  string
-	recursive bool
+	dir             string
+	files           []FileInfo
+	cursor          int
+	selected        string
+	recursive       bool
+	maxDisplayFiles int
+	scrollOffset    int
 }
 
 func NewModel(dir string, recursive bool) Model {
 	return Model{
-		dir:       dir,
-		files:     []FileInfo{},
-		cursor:    0,
-		recursive: recursive,
+		dir:             dir,
+		files:           []FileInfo{},
+		cursor:          0,
+		recursive:       recursive,
+		maxDisplayFiles: 20, // Default limit
+		scrollOffset:    0,
 	}
 }
 
@@ -40,10 +45,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
+				// Scroll up if cursor goes above visible range
+				if m.cursor < m.scrollOffset {
+					m.scrollOffset = m.cursor
+				}
 			}
 		case "down", "j":
 			if m.cursor < len(m.files)-1 {
 				m.cursor++
+				// Scroll down if cursor goes below visible range
+				if m.cursor >= m.scrollOffset+m.maxDisplayFiles {
+					m.scrollOffset = m.cursor - m.maxDisplayFiles + 1
+				}
 			}
 		case "enter":
 			if len(m.files) > 0 {
@@ -52,6 +65,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Navigate into directory
 					m.dir = selectedItem.Path
 					m.cursor = 0
+					m.scrollOffset = 0
 					return m, loadFiles(m.dir, m.recursive)
 				} else {
 					// Convert to markdown and open in editor
@@ -72,6 +86,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case filesLoadedMsg:
 		m.files = msg.files
+		// Reset cursor and scroll when loading new files
+		if m.cursor >= len(m.files) {
+			m.cursor = 0
+		}
+		m.scrollOffset = 0
 	}
 	return m, nil
 }
@@ -86,13 +105,38 @@ func (m Model) View() string {
 	}
 	s.WriteString("📁 " + m.dir + modeStr + "\n\n")
 	
-	// Show files list
-	for i, file := range m.files {
+	// Calculate display range with scrolling
+	totalFiles := len(m.files)
+	displayStart := m.scrollOffset
+	displayEnd := m.scrollOffset + m.maxDisplayFiles
+	
+	if displayEnd > totalFiles {
+		displayEnd = totalFiles
+	}
+	
+	// Show scroll indicators
+	if totalFiles > m.maxDisplayFiles {
+		if m.scrollOffset > 0 {
+			s.WriteString("↑ " + strconv.Itoa(m.scrollOffset) + " more above\n")
+		}
+	}
+	
+	// Show files list with scrolling
+	for i := displayStart; i < displayEnd; i++ {
+		file := m.files[i]
 		cursor := " "
 		if i == m.cursor {
 			cursor = ">"
 		}
 		s.WriteString(cursor + " " + file.Title() + " - " + file.Description() + "\n")
+	}
+	
+	// Show bottom scroll indicator
+	if totalFiles > m.maxDisplayFiles {
+		remainingBelow := totalFiles - displayEnd
+		if remainingBelow > 0 {
+			s.WriteString("↓ " + strconv.Itoa(remainingBelow) + " more below\n")
+		}
 	}
 	
 	// Show help text
