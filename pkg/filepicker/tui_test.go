@@ -842,29 +842,6 @@ func TestModel_InitialWindowSizeDetection(t *testing.T) {
 	}
 }
 
-func TestModel_AdaptiveDisplayCount(t *testing.T) {
-	model := NewModel(".", false)
-	
-	// Test with small terminal height
-	smallMsg := tea.WindowSizeMsg{Width: 80, Height: 15}
-	updatedModel, _ := model.Update(smallMsg)
-	m := updatedModel.(Model)
-	
-	// Should adapt maxDisplayFiles for small screen
-	if m.maxDisplayFiles >= 20 {
-		t.Error("maxDisplayFiles should be reduced for small terminal height")
-	}
-	
-	// Test with large terminal height
-	largeMsg := tea.WindowSizeMsg{Width: 80, Height: 50}
-	updatedModel, _ = model.Update(largeMsg)
-	m = updatedModel.(Model)
-	
-	// Should increase maxDisplayFiles for large screen
-	if m.maxDisplayFiles <= 10 {
-		t.Error("maxDisplayFiles should be increased for large terminal height")
-	}
-}
 
 // TDD Red Phase: Test for width-based layout adjustments
 func TestModel_WidthBasedLayoutAdjustments(t *testing.T) {

@@ -405,27 +405,7 @@ func (m *Model) updateDisplaySettings() {
 		m.maxTitleChars = availableForTitle
 	}
 	
-	// Reserve space for header and controls based on layout
-	var reservedLines int
-	if m.useCompactLayout {
-		reservedLines = 4 // Minimal header and no controls
-	} else {
-		reservedLines = 9 // Full header and controls
-	}
-	
-	availableLines := m.terminalHeight - reservedLines
-	
-	// Set minimum and maximum display files
-	minDisplayFiles := 5
-	maxDisplayFiles := 30
-	
-	if availableLines < minDisplayFiles {
-		m.maxDisplayFiles = minDisplayFiles
-	} else if availableLines > maxDisplayFiles {
-		m.maxDisplayFiles = maxDisplayFiles
-	} else {
-		m.maxDisplayFiles = availableLines
-	}
+	// Keep maxDisplayFiles at default value - no dynamic adjustment
 }
 
 // formatResponsiveLine creates a responsive content line that adapts to terminal width
