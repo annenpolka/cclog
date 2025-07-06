@@ -735,3 +735,30 @@ func TestModel_ScrollReset(t *testing.T) {
 		t.Errorf("Cursor should reset to 0, got %d", m.cursor)
 	}
 }
+
+// TDD Red Phase: Test for display format without dash when Description is empty
+
+func TestModel_ViewWithoutDashWhenDescriptionEmpty(t *testing.T) {
+	// Red: This test should fail because View() includes " - " even when Description is empty
+	model := NewModel(".", false)
+	model.files = []FileInfo{
+		{
+			Name:              "test.jsonl",
+			IsDir:             false,
+			ModTime:           time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+			ConversationTitle: "Test conversation",
+		},
+	}
+	
+	view := model.View()
+	
+	// Should not contain " - " at the end since Description is empty
+	if strings.Contains(view, "2025-01-15 14:30 Test conversation -") {
+		t.Error("View should not contain trailing dash when Description is empty")
+	}
+	
+	// Should contain the title without trailing dash
+	if !strings.Contains(view, "2025-01-15 14:30 Test conversation") {
+		t.Error("View should contain the title without trailing dash")
+	}
+}

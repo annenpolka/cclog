@@ -128,7 +128,11 @@ func (m Model) View() string {
 		if i == m.cursor {
 			cursor = ">"
 		}
-		s.WriteString(cursor + " " + file.Title() + " - " + file.Description() + "\n")
+		displayLine := cursor + " " + file.Title()
+		if desc := file.Description(); desc != "" {
+			displayLine += " - " + desc
+		}
+		s.WriteString(displayLine + "\n")
 	}
 	
 	// Show bottom scroll indicator

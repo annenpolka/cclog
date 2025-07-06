@@ -20,6 +20,13 @@ func main() {
 		return
 	}
 
+	// Show title when starting cclog
+	if !config.ShowHelp && !config.TUIMode {
+		fmt.Println("cclog - Claude Conversation Log Converter")
+		fmt.Println("=========================================")
+		fmt.Println()
+	}
+
 	if config.TUIMode {
 		selectedFile, err := cli.RunTUI(config)
 		if err != nil {

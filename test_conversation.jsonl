@@ -1,0 +1,2 @@
+{"type":"user","message":{"role":"user","content":"goでこれらを人間が読みやすいmarkdownにパースするコマンドラインツールを作る"},"timestamp":"2025-07-06T05:01:59.066Z"}
+{"type":"summary","summary":"User requested Go CLI tool development using TDD","leafUuid":"5930868a-923c-4d1d-aae4-9c363adcf6d2"}

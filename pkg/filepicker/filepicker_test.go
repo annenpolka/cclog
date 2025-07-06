@@ -57,6 +57,7 @@ func TestFileInfo_Title(t *testing.T) {
 	}
 }
 
+
 func TestFileInfo_Description(t *testing.T) {
 	modTime := time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC)
 	
@@ -72,7 +73,7 @@ func TestFileInfo_Description(t *testing.T) {
 				IsDir:   true,
 				ModTime: modTime,
 			},
-			expected: "2025-01-15 14:30",
+			expected: "",
 		},
 		{
 			name: "file with modification time",
@@ -82,7 +83,7 @@ func TestFileInfo_Description(t *testing.T) {
 				Size:    500,
 				ModTime: modTime,
 			},
-			expected: "2025-01-15 14:30",
+			expected: "",
 		},
 	}
 
@@ -231,7 +232,7 @@ func TestFileInfo_Description_WithModTime(t *testing.T) {
 	}
 	
 	description := file.Description()
-	expectedDate := "2025-01-15 14:30"
+	expectedDate := ""
 	
 	if description != expectedDate {
 		t.Errorf("Expected description to be '%s', got '%s'", expectedDate, description)
@@ -250,7 +251,7 @@ func TestFileInfo_Description_DirectoryWithModTime(t *testing.T) {
 	}
 	
 	description := dir.Description()
-	expectedDate := "2025-01-15 14:30"
+	expectedDate := ""
 	
 	if description != expectedDate {
 		t.Errorf("Expected directory description to be '%s', got '%s'", expectedDate, description)
@@ -412,5 +413,370 @@ func TestGetFilesRecursive_WithRelativePaths(t *testing.T) {
 	
 	if !strings.HasSuffix(foundFile.Path, expectedPathSuffix) {
 		t.Errorf("Expected path to end with %s, got %s", expectedPathSuffix, foundFile.Path)
+	}
+}
+
+// TDD Red Phase: Tests for title display functionality
+
+func TestFileInfo_TitleWithConversationTitle(t *testing.T) {
+	// Red: This test should fail because title extraction doesn't exist yet
+	tests := []struct {
+		name     string
+		file     FileInfo
+		expected string
+	}{
+		{
+			name: "JSONL file should display title with conversation title",
+			file: FileInfo{
+				Name:              "conversation.jsonl",
+				Path:              "/path/conversation.jsonl",
+				IsDir:             false,
+				ModTime:           time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+				ConversationTitle: "User requested Go...",
+			},
+			expected: "2025-01-15 14:30 User requested Go...",
+		},
+		{
+			name: "JSONL file without conversation title should display date only",
+			file: FileInfo{
+				Name:              "empty.jsonl",
+				Path:              "/path/empty.jsonl",
+				IsDir:             false,
+				ModTime:           time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+				ConversationTitle: "",
+			},
+			expected: "2025-01-15 14:30",
+		},
+		{
+			name: "Non-JSONL file should display just filename",
+			file: FileInfo{
+				Name:              "document.txt",
+				Path:              "/path/document.txt",
+				IsDir:             false,
+				ConversationTitle: "",
+			},
+			expected: "document.txt",
+		},
+		{
+			name: "Directory should display with slash",
+			file: FileInfo{
+				Name:              "folder",
+				Path:              "/path/folder",
+				IsDir:             true,
+				ConversationTitle: "",
+			},
+			expected: "folder/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.file.Title(); got != tt.expected {
+				t.Errorf("Title() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetFiles_WithConversationTitles(t *testing.T) {
+	// Red: This test should fail because conversation title loading doesn't exist yet
+	tempDir := t.TempDir()
+	
+	// Create a sample JSONL file with conversation content
+	jsonlContent := `{"type":"user","message":{"role":"user","content":"goでこれらを人間が読みやすいmarkdownにパースするコマンドラインツールを作る"},"timestamp":"2025-07-06T05:01:59.066Z"}
+{"type":"summary","summary":"User requested Go CLI tool development using TDD","leafUuid":"5930868a-923c-4d1d-aae4-9c363adcf6d2"}
+`
+	jsonlFile := filepath.Join(tempDir, "conversation.jsonl")
+	if err := os.WriteFile(jsonlFile, []byte(jsonlContent), 0644); err != nil {
+		t.Fatalf("Failed to create JSONL file: %v", err)
+	}
+	
+	// Get files with conversation titles
+	files, err := GetFiles(tempDir)
+	if err != nil {
+		t.Fatalf("GetFiles failed: %v", err)
+	}
+	
+	// Find the JSONL file
+	var jsonlFileInfo *FileInfo
+	for _, file := range files {
+		if file.Name == "conversation.jsonl" {
+			jsonlFileInfo = &file
+			break
+		}
+	}
+	
+	if jsonlFileInfo == nil {
+		t.Fatal("Expected to find conversation.jsonl")
+	}
+	
+	// Should have conversation title extracted
+	if jsonlFileInfo.ConversationTitle == "" {
+		t.Error("Expected ConversationTitle to be extracted from JSONL file")
+	}
+	
+	// Title should include conversation title and date in new format
+	// We can't predict exact time, so just check that it contains the pattern
+	title := jsonlFileInfo.Title()
+	if !strings.Contains(title, "goでこれらを人間が読みやすいma...") {
+		t.Errorf("Expected Title() to contain 'goでこれらを人間が読みやすいma...', got '%s'", title)
+	}
+	
+	// Check date format pattern (YYYY-MM-DD HH:MM)
+	if !strings.Contains(title, "-") || len(title) < 16 {
+		t.Errorf("Expected Title() to contain date format, got '%s'", title)
+	}
+}
+
+// TDD Red Phase: Tests for date-title display format
+
+func TestFileInfo_TitleWithDateTitleFormat(t *testing.T) {
+	// Red: This test should fail because date-title format doesn't exist yet
+	modTime := time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC)
+	
+	tests := []struct {
+		name     string
+		file     FileInfo
+		expected string
+	}{
+		{
+			name: "JSONL file should display date - title format",
+			file: FileInfo{
+				Name:              "conversation.jsonl",
+				Path:              "/path/conversation.jsonl",
+				IsDir:             false,
+				ModTime:           modTime,
+				ConversationTitle: "User requested Go...",
+			},
+			expected: "2025-01-15 14:30 User requested Go...",
+		},
+		{
+			name: "JSONL file without conversation title should display date only",
+			file: FileInfo{
+				Name:              "empty.jsonl",
+				Path:              "/path/empty.jsonl",
+				IsDir:             false,
+				ModTime:           modTime,
+				ConversationTitle: "",
+			},
+			expected: "2025-01-15 14:30",
+		},
+		{
+			name: "Non-JSONL file should display just filename",
+			file: FileInfo{
+				Name:              "document.txt",
+				Path:              "/path/document.txt",
+				IsDir:             false,
+				ModTime:           modTime,
+				ConversationTitle: "",
+			},
+			expected: "document.txt",
+		},
+		{
+			name: "Directory should display with slash",
+			file: FileInfo{
+				Name:              "folder",
+				Path:              "/path/folder",
+				IsDir:             true,
+				ModTime:           modTime,
+				ConversationTitle: "",
+			},
+			expected: "folder/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.file.Title(); got != tt.expected {
+				t.Errorf("Title() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TDD Red Phase: Tests for removing right-side date display
+
+func TestFileInfo_DescriptionEmptyForCleanDisplay(t *testing.T) {
+	// Red: This test should fail because Description still shows date
+	modTime := time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC)
+	
+	tests := []struct {
+		name     string
+		file     FileInfo
+		expected string
+	}{
+		{
+			name: "JSONL file should not show date in description",
+			file: FileInfo{
+				Name:              "conversation.jsonl",
+				Path:              "/path/conversation.jsonl",
+				IsDir:             false,
+				ModTime:           modTime,
+				ConversationTitle: "User requested Go...",
+			},
+			expected: "",
+		},
+		{
+			name: "Non-JSONL file should not show date in description",
+			file: FileInfo{
+				Name:              "document.txt",
+				Path:              "/path/document.txt",
+				IsDir:             false,
+				ModTime:           modTime,
+				ConversationTitle: "",
+			},
+			expected: "",
+		},
+		{
+			name: "Directory should not show date in description",
+			file: FileInfo{
+				Name:              "folder",
+				Path:              "/path/folder",
+				IsDir:             true,
+				ModTime:           modTime,
+				ConversationTitle: "",
+			},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.file.Description(); got != tt.expected {
+				t.Errorf("Description() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TDD Red Phase: Tests for removing dash separator in title
+
+func TestFileInfo_TitleWithoutDashSeparator(t *testing.T) {
+	// Red: This test should fail because Title still includes " - " separator
+	modTime := time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC)
+	
+	tests := []struct {
+		name     string
+		file     FileInfo
+		expected string
+	}{
+		{
+			name: "JSONL file with title should not include dash separator",
+			file: FileInfo{
+				Name:              "conversation.jsonl",
+				Path:              "/path/conversation.jsonl",
+				IsDir:             false,
+				ModTime:           modTime,
+				ConversationTitle: "User requested Go...",
+			},
+			expected: "2025-01-15 14:30 User requested Go...",
+		},
+		{
+			name: "JSONL file without title should show date only",
+			file: FileInfo{
+				Name:              "empty.jsonl",
+				Path:              "/path/empty.jsonl",
+				IsDir:             false,
+				ModTime:           modTime,
+				ConversationTitle: "",
+			},
+			expected: "2025-01-15 14:30",
+		},
+		{
+			name: "Non-JSONL file should display just filename",
+			file: FileInfo{
+				Name:              "document.txt",
+				Path:              "/path/document.txt",
+				IsDir:             false,
+				ModTime:           modTime,
+				ConversationTitle: "",
+			},
+			expected: "document.txt",
+		},
+		{
+			name: "Directory should display with slash",
+			file: FileInfo{
+				Name:              "folder",
+				Path:              "/path/folder",
+				IsDir:             true,
+				ModTime:           modTime,
+				ConversationTitle: "",
+			},
+			expected: "folder/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.file.Title(); got != tt.expected {
+				t.Errorf("Title() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TDD Red Phase: Tests for "date title" format without dashes
+
+func TestFileInfo_TitleWithDateTitleFormatNoDashes(t *testing.T) {
+	// Red: This test should fail because current format is "title date" not "date title"
+	modTime := time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC)
+	
+	tests := []struct {
+		name     string
+		file     FileInfo
+		expected string
+	}{
+		{
+			name: "JSONL file should display date title format without dashes",
+			file: FileInfo{
+				Name:              "conversation.jsonl",
+				Path:              "/path/conversation.jsonl",
+				IsDir:             false,
+				ModTime:           modTime,
+				ConversationTitle: "User requested Go...",
+			},
+			expected: "2025-01-15 14:30 User requested Go...",
+		},
+		{
+			name: "JSONL file without title should show date only",
+			file: FileInfo{
+				Name:              "empty.jsonl",
+				Path:              "/path/empty.jsonl",
+				IsDir:             false,
+				ModTime:           modTime,
+				ConversationTitle: "",
+			},
+			expected: "2025-01-15 14:30",
+		},
+		{
+			name: "Non-JSONL file should display just filename",
+			file: FileInfo{
+				Name:              "document.txt",
+				Path:              "/path/document.txt",
+				IsDir:             false,
+				ModTime:           modTime,
+				ConversationTitle: "",
+			},
+			expected: "document.txt",
+		},
+		{
+			name: "Directory should display with slash",
+			file: FileInfo{
+				Name:              "folder",
+				Path:              "/path/folder",
+				IsDir:             true,
+				ModTime:           modTime,
+				ConversationTitle: "",
+			},
+			expected: "folder/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.file.Title(); got != tt.expected {
+				t.Errorf("Title() = %v, want %v", got, tt.expected)
+			}
+		})
 	}
 }
