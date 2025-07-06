@@ -434,7 +434,7 @@ func TestFileInfo_TitleWithConversationTitle(t *testing.T) {
 				ModTime:           time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
 				ConversationTitle: "User requested Go...",
 			},
-			expected: "2025-01-15 14:30 - User requested Go...",
+			expected: "2025-01-15 14:30 User requested Go...",
 		},
 		{
 			name: "JSONL file without conversation title should display date only",
@@ -515,11 +515,11 @@ func TestGetFiles_WithConversationTitles(t *testing.T) {
 		t.Error("Expected ConversationTitle to be extracted from JSONL file")
 	}
 	
-	// Title should include date and conversation title in new format
+	// Title should include conversation title and date in new format
 	// We can't predict exact time, so just check that it contains the pattern
 	title := jsonlFileInfo.Title()
-	if !strings.Contains(title, " - goでこれらを人間が読みやすいma...") {
-		t.Errorf("Expected Title() to contain ' - goでこれらを人間が読みやすいma...', got '%s'", title)
+	if !strings.Contains(title, "goでこれらを人間が読みやすいma...") {
+		t.Errorf("Expected Title() to contain 'goでこれらを人間が読みやすいma...', got '%s'", title)
 	}
 	
 	// Check date format pattern (YYYY-MM-DD HH:MM)
@@ -548,7 +548,7 @@ func TestFileInfo_TitleWithDateTitleFormat(t *testing.T) {
 				ModTime:           modTime,
 				ConversationTitle: "User requested Go...",
 			},
-			expected: "2025-01-15 14:30 - User requested Go...",
+			expected: "2025-01-15 14:30 User requested Go...",
 		},
 		{
 			name: "JSONL file without conversation title should display date only",
@@ -669,7 +669,7 @@ func TestFileInfo_TitleWithoutDashSeparator(t *testing.T) {
 				ModTime:           modTime,
 				ConversationTitle: "User requested Go...",
 			},
-			expected: "2025-01-15 14:30 - User requested Go...",
+			expected: "2025-01-15 14:30 User requested Go...",
 		},
 		{
 			name: "JSONL file without title should show date only",
@@ -715,10 +715,10 @@ func TestFileInfo_TitleWithoutDashSeparator(t *testing.T) {
 	}
 }
 
-// TDD Red Phase: Tests for correct "date - title" format
+// TDD Red Phase: Tests for "date title" format without dashes
 
-func TestFileInfo_TitleWithCorrectDateDashTitleFormat(t *testing.T) {
-	// Red: This test should fail because current format is "date title" not "date - title"
+func TestFileInfo_TitleWithDateTitleFormatNoDashes(t *testing.T) {
+	// Red: This test should fail because current format is "title date" not "date title"
 	modTime := time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC)
 	
 	tests := []struct {
@@ -727,7 +727,7 @@ func TestFileInfo_TitleWithCorrectDateDashTitleFormat(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "JSONL file should display correct date - title format",
+			name: "JSONL file should display date title format without dashes",
 			file: FileInfo{
 				Name:              "conversation.jsonl",
 				Path:              "/path/conversation.jsonl",
@@ -735,7 +735,7 @@ func TestFileInfo_TitleWithCorrectDateDashTitleFormat(t *testing.T) {
 				ModTime:           modTime,
 				ConversationTitle: "User requested Go...",
 			},
-			expected: "2025-01-15 14:30 - User requested Go...",
+			expected: "2025-01-15 14:30 User requested Go...",
 		},
 		{
 			name: "JSONL file without title should show date only",

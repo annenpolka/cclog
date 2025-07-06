@@ -28,11 +28,11 @@ func (f FileInfo) Title() string {
 		return f.Name + "/"
 	}
 	
-	// For JSONL files, display correct "date - title" format
+	// For JSONL files, display "date title" format without dashes
 	if filepath.Ext(f.Name) == ".jsonl" {
 		dateStr := f.ModTime.Format("2006-01-02 15:04")
 		if f.ConversationTitle != "" {
-			return dateStr + " - " + f.ConversationTitle
+			return dateStr + " " + f.ConversationTitle
 		}
 		return dateStr
 	}
