@@ -21,6 +21,8 @@ func ParseJSONLFile(filePath string) (*types.ConversationLog, error) {
 
 	var messages []types.Message
 	scanner := bufio.NewScanner(file)
+	// Expand buffer size to handle large JSONL lines (up to 1MB)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	lineNum := 0
 
 	for scanner.Scan() {

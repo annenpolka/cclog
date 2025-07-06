@@ -1,7 +1,9 @@
 package parser
 
 import (
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -77,5 +79,61 @@ func TestParseJSONLDirectory(t *testing.T) {
 
 	if len(logs[0].Messages) != 11 {
 		t.Errorf("Expected 11 messages in first log, got %d", len(logs[0].Messages))
+	}
+}
+
+func TestParseJSONLFileLargeLines(t *testing.T) {
+	// Create a temporary file with a large line (80KB)
+	tmpFile := filepath.Join(t.TempDir(), "large_line.jsonl")
+	
+	// Generate a large content string (80KB)
+	largeContent := strings.Repeat("A", 80*1024)
+	
+	// Create a valid JSONL message with large content
+	largeMessage := `{"parentUuid":"test-uuid","isSidechain":false,"userType":"external","cwd":"/test","sessionId":"test-session","version":"1.0.0","type":"user","message":{"role":"user","content":"` + largeContent + `"},"uuid":"large-uuid","timestamp":"2025-07-06T05:01:44.663Z"}`
+	
+	// Write test data
+	content := largeMessage + "\n" + `{"type":"user","message":{"role":"user","content":"normal message"},"uuid":"normal-uuid","timestamp":"2025-07-06T05:01:45.663Z"}`
+	
+	err := os.WriteFile(tmpFile, []byte(content), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	
+	// Test parsing
+	log, err := ParseJSONLFile(tmpFile)
+	if err != nil {
+		t.Fatalf("Failed to parse JSONL file with large lines: %v", err)
+	}
+	
+	if len(log.Messages) != 2 {
+		t.Errorf("Expected 2 messages, got %d", len(log.Messages))
+	}
+	
+	// Verify the large message was parsed correctly
+	// Message.Message is interface{}, need to cast to map for content access
+	if msg, ok := log.Messages[0].Message.(map[string]interface{}); ok {
+		if content, ok := msg["content"].(string); ok {
+			if len(content) != 80*1024 {
+				t.Errorf("Expected large message content length %d, got %d", 80*1024, len(content))
+			}
+		} else {
+			t.Error("Failed to extract content from large message")
+		}
+	} else {
+		t.Error("Failed to cast large message to map")
+	}
+	
+	// Verify the normal message was also parsed
+	if msg, ok := log.Messages[1].Message.(map[string]interface{}); ok {
+		if content, ok := msg["content"].(string); ok {
+			if content != "normal message" {
+				t.Errorf("Expected normal message content 'normal message', got '%s'", content)
+			}
+		} else {
+			t.Error("Failed to extract content from normal message")
+		}
+	} else {
+		t.Error("Failed to cast normal message to map")
 	}
 }
