@@ -34,15 +34,18 @@ The codebase follows Go's standard project layout with clear separation of conce
 ### Core Data Flow
 1. **JSONL Parsing** (`internal/parser`) - Reads and parses conversation log files
 2. **Type System** (`pkg/types`) - Defines message structures and conversation logs
-3. **Markdown Formatting** (`internal/formatter`) - Converts parsed data to readable Markdown
-4. **CLI Interface** (`cmd/cclog`) - Provides command-line interface
+3. **Message Filtering** (`internal/formatter/filter`) - Filters out noise and system messages
+4. **Markdown Formatting** (`internal/formatter/markdown`) - Converts parsed data to readable Markdown
+5. **CLI Interface** (`cmd/cclog` and `internal/cli`) - Provides command-line interface
 
 ### Key Components
 
 - **Message Type System**: The `types.Message` struct handles the complex JSONL structure from Claude conversations, including nested message content, timestamps, and metadata
 - **Parser Strategy**: Line-by-line JSONL parsing with proper error handling and empty line skipping
+- **Message Filtering**: Intelligent filtering that removes system messages, API errors, interrupted requests, command outputs, and meta messages
 - **Markdown Generation**: Time-sorted message processing with JST timezone conversion and content extraction from Claude's complex message format
 - **Content Extraction**: Handles both simple string content and complex array-based content structures from Claude's message format
+- **CLI Features**: Supports single file/directory processing, output file specification, filtering options, and UUID display
 
 ### TDD Approach
 
@@ -65,3 +68,29 @@ The test data in `testdata/sample.jsonl` represents actual Claude conversation l
 - Run tests frequently during development (`go test ./...`)
 - Ensure all tests pass before committing code
 - Refactor only when tests are green
+
+## CLI Usage Examples
+
+```bash
+# Convert single file to stdout
+cclog conversation.jsonl
+
+# Convert single file to output file
+cclog conversation.jsonl -o output.md
+
+# Convert all JSONL files in directory
+cclog -d /path/to/logs -o combined.md
+
+# Include all messages (no filtering)
+cclog --include-all conversation.jsonl
+
+# Show UUID metadata
+cclog --show-uuid conversation.jsonl
+```
+
+## Important Notes
+
+- The project uses **only standard library** dependencies - no external packages
+- Message filtering is **intelligent** - it removes system noise while preserving meaningful conversation content
+- Timestamps are converted to **JST timezone** for readability
+- The `testdata/sample.jsonl` file contains realistic Claude conversation structure for testing
