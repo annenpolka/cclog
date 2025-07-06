@@ -20,7 +20,7 @@ func ExtractTitle(log *ConversationLog) string {
 	for _, msg := range log.Messages {
 		if msg.Type == "summary" {
 			if title := extractTitleFromSummary(msg); title != "" {
-				return TruncateTitle(title)
+				return title
 			}
 		}
 	}
@@ -29,7 +29,7 @@ func ExtractTitle(log *ConversationLog) string {
 	for _, msg := range log.Messages {
 		if msg.Type == "user" && !msg.IsMeta {
 			if title := extractTitleFromUserMessage(msg); title != "" {
-				return TruncateTitle(title)
+				return title
 			}
 		}
 	}
@@ -91,7 +91,12 @@ func extractTitleFromUserMessage(msg Message) string {
 
 // TruncateTitle truncates title to appropriate length
 func TruncateTitle(title string) string {
-	if title == "" {
+	return TruncateTitleWithWidth(title, maxTitleLength)
+}
+
+// TruncateTitleWithWidth truncates title to specified width
+func TruncateTitleWithWidth(title string, width int) string {
+	if title == "" || width <= 0 {
 		return ""
 	}
 
@@ -101,11 +106,17 @@ func TruncateTitle(title string) string {
 	// Count runes (not bytes) for proper Unicode handling
 	runes := []rune(title)
 	
-	if len(runes) <= maxTitleLength {
+	if len(runes) <= width {
 		return title
 	}
 
+	// Handle case where width is smaller than ellipsis
+	ellipsisRunes := []rune(ellipsis)
+	if width <= len(ellipsisRunes) {
+		return string(runes[:width])
+	}
+
 	// Truncate and add ellipsis
-	truncated := string(runes[:maxTitleLength-len(ellipsis)])
+	truncated := string(runes[:width-len(ellipsisRunes)])
 	return truncated + ellipsis
 }

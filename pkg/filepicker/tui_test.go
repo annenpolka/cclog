@@ -762,3 +762,409 @@ func TestModel_ViewWithoutDashWhenDescriptionEmpty(t *testing.T) {
 		t.Error("View should contain the title without trailing dash")
 	}
 }
+
+// TDD Red Phase: Test for dynamic title width based on terminal width
+func TestModel_WindowSizeHandling(t *testing.T) {
+	model := NewModel(".", false)
+	model.files = []FileInfo{
+		{
+			Name:              "test.jsonl",
+			IsDir:             false,
+			ModTime:           time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+			ConversationTitle: "This is a very long conversation title that should be truncated based on terminal width",
+		},
+	}
+	
+	// Test with narrow terminal width
+	msg := tea.WindowSizeMsg{Width: 60, Height: 24}
+	updatedModel, _ := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	// Check that model has stored the terminal width
+	if m.terminalWidth != 60 {
+		t.Errorf("Expected terminal width 60, got %d", m.terminalWidth)
+	}
+	
+	view := m.View()
+	
+	// With narrow width, title should be truncated appropriately
+	// The new responsive system handles truncation differently
+	if !strings.Contains(view, "...") {
+		t.Errorf("Title should be truncated for narrow terminal width, got view: %s", view)
+	}
+}
+
+func TestModel_WindowSizeHandling_WideTerminal(t *testing.T) {
+	model := NewModel(".", false)
+	model.files = []FileInfo{
+		{
+			Name:              "test.jsonl",
+			IsDir:             false,
+			ModTime:           time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+			ConversationTitle: "This is a medium length conversation title",
+		},
+	}
+	
+	// Test with wide terminal width
+	msg := tea.WindowSizeMsg{Width: 120, Height: 24}
+	updatedModel, _ := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	// Check that model has stored the terminal width
+	if m.terminalWidth != 120 {
+		t.Errorf("Expected terminal width 120, got %d", m.terminalWidth)
+	}
+	
+	view := m.View()
+	
+	// With wide width, title should not be truncated
+	if !strings.Contains(view, "This is a medium length conversation title") {
+		t.Error("Title should not be truncated for wide terminal")
+	}
+}
+
+// TDD Red Phase: Test for initial window size detection
+func TestModel_InitialWindowSizeDetection(t *testing.T) {
+	model := NewModel(".", false)
+	
+	// Init should return a command (tea.Batch)
+	cmd := model.Init()
+	if cmd == nil {
+		t.Error("Init() should return a command")
+	}
+	
+	// Since we use tea.Batch, we need to test the functionality differently
+	// Test that GetInitialWindowSize returns a WindowSizeMsg
+	windowSizeCmd := GetInitialWindowSize()
+	msg := windowSizeCmd()
+	if _, ok := msg.(tea.WindowSizeMsg); !ok {
+		t.Error("GetInitialWindowSize command should return a WindowSizeMsg")
+	}
+}
+
+func TestModel_AdaptiveDisplayCount(t *testing.T) {
+	model := NewModel(".", false)
+	
+	// Test with small terminal height
+	smallMsg := tea.WindowSizeMsg{Width: 80, Height: 15}
+	updatedModel, _ := model.Update(smallMsg)
+	m := updatedModel.(Model)
+	
+	// Should adapt maxDisplayFiles for small screen
+	if m.maxDisplayFiles >= 20 {
+		t.Error("maxDisplayFiles should be reduced for small terminal height")
+	}
+	
+	// Test with large terminal height
+	largeMsg := tea.WindowSizeMsg{Width: 80, Height: 50}
+	updatedModel, _ = model.Update(largeMsg)
+	m = updatedModel.(Model)
+	
+	// Should increase maxDisplayFiles for large screen
+	if m.maxDisplayFiles <= 10 {
+		t.Error("maxDisplayFiles should be increased for large terminal height")
+	}
+}
+
+// TDD Red Phase: Test for width-based layout adjustments
+func TestModel_WidthBasedLayoutAdjustments(t *testing.T) {
+	model := NewModel(".", false)
+	model.files = []FileInfo{
+		{
+			Name:              "test.jsonl",
+			IsDir:             false,
+			ModTime:           time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+			ConversationTitle: "This is a very long conversation title that should be adjusted based on width",
+		},
+	}
+	
+	// Test with very narrow terminal width
+	narrowMsg := tea.WindowSizeMsg{Width: 40, Height: 24}
+	updatedModel, _ := model.Update(narrowMsg)
+	m := updatedModel.(Model)
+	
+	view := m.View()
+	
+	// Should have compact layout for narrow width
+	if m.useCompactLayout != true {
+		t.Error("Should use compact layout for narrow terminal width")
+	}
+	
+	// Should not show help text in compact mode
+	if strings.Contains(view, "Controls:") {
+		t.Error("Should not show help text in compact layout")
+	}
+	
+	// Test with wide terminal width
+	wideMsg := tea.WindowSizeMsg{Width: 120, Height: 24}
+	updatedModel, _ = model.Update(wideMsg)
+	m = updatedModel.(Model)
+	
+	view = m.View()
+	
+	// Should have full layout for wide width
+	if m.useCompactLayout != false {
+		t.Error("Should use full layout for wide terminal width")
+	}
+	
+	// Should show help text in full mode
+	if !strings.Contains(view, "Controls:") {
+		t.Error("Should show help text in full layout")
+	}
+}
+
+func TestModel_DirectoryPathTruncation(t *testing.T) {
+	model := NewModel("/very/long/path/to/some/directory/that/should/be/truncated", false)
+	
+	// Test with narrow terminal width
+	narrowMsg := tea.WindowSizeMsg{Width: 50, Height: 24}
+	updatedModel, _ := model.Update(narrowMsg)
+	m := updatedModel.(Model)
+	
+	view := m.View()
+	
+	// Directory path should be truncated for narrow width
+	if strings.Contains(view, "/very/long/path/to/some/directory/that/should/be/truncated") {
+		t.Error("Directory path should be truncated for narrow width")
+	}
+	
+	// Should contain ellipsis when truncated
+	if !strings.Contains(view, "...") {
+		t.Error("Truncated directory path should contain ellipsis")
+	}
+}
+
+func TestModel_ControlsTextAdaptation(t *testing.T) {
+	model := NewModel(".", false)
+	
+	// Test with very narrow terminal width - should show minimal controls
+	veryNarrowMsg := tea.WindowSizeMsg{Width: 30, Height: 24}
+	updatedModel, _ := model.Update(veryNarrowMsg)
+	m := updatedModel.(Model)
+	
+	view := m.View()
+	
+	// Should show abbreviated controls for very narrow width
+	if strings.Contains(view, "Enter: Open folder / Open file in editor") {
+		t.Error("Should show abbreviated controls for very narrow width")
+	}
+}
+
+// Test for dynamic character limit - no more content stretching
+func TestModel_DynamicCharacterLimitInsteadOfStretching(t *testing.T) {
+	model := NewModel(".", false)
+	model.files = []FileInfo{
+		{
+			Name:              "test.jsonl",
+			IsDir:             false,
+			ModTime:           time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+			ConversationTitle: "Short title",
+		},
+	}
+	
+	// Test with wide terminal - should allow more characters instead of stretching
+	wideMsg := tea.WindowSizeMsg{Width: 120, Height: 24}
+	updatedModel, _ := model.Update(wideMsg)
+	m := updatedModel.(Model)
+	
+	// Should have higher character limit for wide terminal
+	if m.maxTitleChars <= 40 {
+		t.Errorf("Wide terminal should have higher character limit, got %d", m.maxTitleChars)
+	}
+	
+	view := m.View()
+	
+	// Should show title normally without stretching
+	if !strings.Contains(view, "Short title") {
+		t.Error("Should show title normally")
+	}
+	
+	// Should NOT have character expansion
+	if strings.Contains(view, "S h o r t   t i t l e") {
+		t.Error("Should not have character expansion")
+	}
+}
+
+func TestModel_AdaptiveTitleLength(t *testing.T) {
+	model := NewModel(".", false)
+	model.files = []FileInfo{
+		{
+			Name:              "test.jsonl",
+			IsDir:             false,
+			ModTime:           time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+			ConversationTitle: "This is a medium length conversation title",
+		},
+	}
+	
+	// Test with different widths - title should adapt accordingly
+	widths := []struct {
+		width    int
+		expected string
+	}{
+		{60, "This is a medium length..."},    // Narrow: truncated
+		{100, "This is a medium length conversation title"}, // Wide: full title
+		{80, "This is a medium length conversation title"},  // Medium: should fit
+	}
+	
+	for _, tc := range widths {
+		msg := tea.WindowSizeMsg{Width: tc.width, Height: 24}
+		updatedModel, _ := model.Update(msg)
+		m := updatedModel.(Model)
+		
+		view := m.View()
+		
+		if tc.width >= 100 {
+			// Wide screen should show full title
+			if !strings.Contains(view, tc.expected) {
+				t.Errorf("Width %d should show full title '%s'", tc.width, tc.expected)
+			}
+		} else if tc.width <= 60 {
+			// Narrow screen should show truncated title
+			if !strings.Contains(view, "...") {
+				t.Errorf("Width %d should show truncated title with ellipsis", tc.width)
+			}
+		}
+	}
+}
+
+func TestModel_ContentAlignment(t *testing.T) {
+	model := NewModel(".", false)
+	model.files = []FileInfo{
+		{
+			Name:              "test.jsonl",
+			IsDir:             false,
+			ModTime:           time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+			ConversationTitle: "Test title",
+		},
+	}
+	
+	// Test with wide terminal
+	wideMsg := tea.WindowSizeMsg{Width: 120, Height: 24}
+	updatedModel, _ := model.Update(wideMsg)
+	m := updatedModel.(Model)
+	
+	// Should support content alignment options
+	if m.contentAlignment == "" {
+		t.Error("Should have content alignment setting")
+	}
+	
+	view := m.View()
+	
+	// Check that content uses available space efficiently
+	lines := strings.Split(view, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "Test title") {
+			// Line should not significantly exceed terminal width (allow small buffer for Unicode)
+			lineRunes := []rune(line)
+			if len(lineRunes) > m.terminalWidth+5 { // Allow small buffer
+				t.Errorf("Line rune length %d significantly exceeds terminal width %d", len(lineRunes), m.terminalWidth)
+			}
+		}
+	}
+}
+
+// TDD Red Phase: Test for dynamic title character limit based on terminal width
+func TestModel_DynamicTitleCharacterLimit(t *testing.T) {
+	model := NewModel(".", false)
+	longTitle := "This is a very long conversation title that should be displayed differently based on terminal width and should show more characters when the terminal is wider"
+	model.files = []FileInfo{
+		{
+			Name:              "test.jsonl",
+			IsDir:             false,
+			ModTime:           time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+			ConversationTitle: longTitle,
+		},
+	}
+	
+	testCases := []struct {
+		width          int
+		expectedMinLen int
+		description    string
+	}{
+		{60, 20, "narrow terminal should show at least 20 chars"},
+		{80, 35, "medium terminal should show at least 35 chars"},
+		{120, 75, "wide terminal should show at least 75 chars"},
+		{160, 115, "very wide terminal should show at least 115 chars"},
+	}
+	
+	for _, tc := range testCases {
+		msg := tea.WindowSizeMsg{Width: tc.width, Height: 24}
+		updatedModel, _ := model.Update(msg)
+		m := updatedModel.(Model)
+		
+		view := m.View()
+		
+		// Find the title part in the view
+		titleFound := false
+		titleLength := 0
+		lines := strings.Split(view, "\n")
+		for _, line := range lines {
+			if strings.Contains(line, "This is a very") {
+				// Extract just the title part (after date/time)
+				parts := strings.Split(line, "2025-01-15 14:30 ")
+				if len(parts) > 1 {
+					titlePart := parts[1]
+					titleLength = len([]rune(titlePart))
+					titleFound = true
+				}
+				break
+			}
+		}
+		
+		if !titleFound {
+			t.Errorf("Could not find title in view for width %d", tc.width)
+			continue
+		}
+		
+		if titleLength < tc.expectedMinLen {
+			t.Errorf("%s: got %d chars, expected at least %d chars", tc.description, titleLength, tc.expectedMinLen)
+		}
+	}
+}
+
+func TestModel_TitleCharacterLimitScaling(t *testing.T) {
+	model := NewModel(".", false)
+	
+	// Test that the character limit scales with terminal width
+	narrowMsg := tea.WindowSizeMsg{Width: 60, Height: 24}
+	updatedModel, _ := model.Update(narrowMsg)
+	narrowModel := updatedModel.(Model)
+	
+	wideMsg := tea.WindowSizeMsg{Width: 120, Height: 24}
+	updatedModel, _ = model.Update(wideMsg)
+	wideModel := updatedModel.(Model)
+	
+	// Wide terminal should have higher character limit
+	if wideModel.maxTitleChars <= narrowModel.maxTitleChars {
+		t.Errorf("Wide terminal should have higher character limit than narrow terminal. Wide: %d, Narrow: %d", wideModel.maxTitleChars, narrowModel.maxTitleChars)
+	}
+}
+
+func TestModel_NoCharacterSpacingExpansion(t *testing.T) {
+	model := NewModel(".", false)
+	model.files = []FileInfo{
+		{
+			Name:              "test.jsonl",
+			IsDir:             false,
+			ModTime:           time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC),
+			ConversationTitle: "Normal title",
+		},
+	}
+	
+	// Test with wide terminal
+	wideMsg := tea.WindowSizeMsg{Width: 120, Height: 24}
+	updatedModel, _ := model.Update(wideMsg)
+	m := updatedModel.(Model)
+	
+	view := m.View()
+	
+	// Should NOT have excessive character spacing
+	if strings.Contains(view, "N o r m a l   t i t l e") {
+		t.Error("Should not expand characters with spacing")
+	}
+	
+	// Should show normal title with more characters allowed
+	if !strings.Contains(view, "Normal title") {
+		t.Error("Should show normal title without character expansion")
+	}
+}

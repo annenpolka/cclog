@@ -7,8 +7,10 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"golang.org/x/term"
 	"cclog/internal/formatter"
 	"cclog/internal/parser"
+	"cclog/pkg/types"
 )
 
 type Model struct {
@@ -19,25 +21,43 @@ type Model struct {
 	recursive       bool
 	maxDisplayFiles int
 	scrollOffset    int
+	terminalWidth   int
+	terminalHeight  int
+	useCompactLayout bool
+	contentAlignment string
+	maxTitleChars   int
 }
 
 func NewModel(dir string, recursive bool) Model {
 	return Model{
-		dir:             dir,
-		files:           []FileInfo{},
-		cursor:          0,
-		recursive:       recursive,
-		maxDisplayFiles: 20, // Default limit
-		scrollOffset:    0,
+		dir:              dir,
+		files:            []FileInfo{},
+		cursor:           0,
+		recursive:        recursive,
+		maxDisplayFiles:  20, // Default limit
+		scrollOffset:     0,
+		terminalWidth:    80, // Default terminal width
+		terminalHeight:   24, // Default terminal height
+		useCompactLayout: false, // Default to full layout
+		contentAlignment: "left", // Default alignment
+		maxTitleChars:    40, // Default title character limit
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return loadFiles(m.dir, m.recursive)
+	return tea.Batch(
+		loadFiles(m.dir, m.recursive),
+		GetInitialWindowSize(),
+	)
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.terminalWidth = msg.Width
+		m.terminalHeight = msg.Height
+		m.updateDisplaySettings()
+		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
@@ -103,7 +123,17 @@ func (m Model) View() string {
 	if m.recursive {
 		modeStr = " [RECURSIVE]"
 	}
-	s.WriteString("📁 " + m.dir + modeStr + "\n\n")
+	
+	// Truncate directory path for narrow terminals
+	dirPath := m.dir + modeStr
+	if m.terminalWidth > 0 && len(dirPath) > m.terminalWidth-4 { // Reserve space for emoji and spaces
+		availableWidth := m.terminalWidth - 7 // "📁 " + "..."
+		if availableWidth > 0 {
+			dirPath = types.TruncateTitleWithWidth(dirPath, availableWidth)
+		}
+	}
+	
+	s.WriteString("📁 " + dirPath + "\n\n")
 	
 	// Calculate display range with scrolling
 	totalFiles := len(m.files)
@@ -128,10 +158,16 @@ func (m Model) View() string {
 		if i == m.cursor {
 			cursor = ">"
 		}
-		displayLine := cursor + " " + file.Title()
-		if desc := file.Description(); desc != "" {
-			displayLine += " - " + desc
-		}
+		
+		// Get base title and apply responsive formatting
+		title := file.Title()
+		
+		// Calculate available width for content
+		prefixWidth := 3 // cursor + spaces
+		availableWidth := m.terminalWidth - prefixWidth
+		
+		// Create responsive content line
+		displayLine := m.formatResponsiveLine(cursor, title, availableWidth)
 		s.WriteString(displayLine + "\n")
 	}
 	
@@ -143,13 +179,21 @@ func (m Model) View() string {
 		}
 	}
 	
-	// Show help text
-	s.WriteString("\n")
-	s.WriteString("Controls:\n")
-	s.WriteString("  ↑/↓, j/k: Navigate\n")
-	s.WriteString("  Enter: Open folder / Open file in editor\n")
-	s.WriteString("  Space: Select file only\n")
-	s.WriteString("  q: Quit\n")
+	// Show help text based on layout
+	if !m.useCompactLayout {
+		s.WriteString("\n")
+		s.WriteString("Controls:\n")
+		s.WriteString("  ↑/↓, j/k: Navigate\n")
+		s.WriteString("  Enter: Open folder / Open file in editor\n")
+		s.WriteString("  Space: Select file only\n")
+		s.WriteString("  q: Quit\n")
+	} else if m.terminalWidth < 40 {
+		// Very narrow: minimal help
+		s.WriteString("\nj/k:Nav Enter:Open q:Quit")
+	} else {
+		// Compact: abbreviated help
+		s.WriteString("\nNav:↑↓/jk Open:Enter Select:Space Quit:q")
+	}
 	
 	return s.String()
 }
@@ -316,4 +360,100 @@ func isBackgroundEditor(editorPath string) bool {
 		}
 	}
 	return false
+}
+
+// GetInitialWindowSize gets the current terminal size
+func GetInitialWindowSize() tea.Cmd {
+	return func() tea.Msg {
+		width, height, err := term.GetSize(int(os.Stdout.Fd()))
+		if err != nil {
+			// Fallback to default size if unable to get terminal size
+			return tea.WindowSizeMsg{Width: 80, Height: 24}
+		}
+		return tea.WindowSizeMsg{Width: width, Height: height}
+	}
+}
+
+// updateDisplaySettings adjusts display settings based on terminal size
+func (m *Model) updateDisplaySettings() {
+	// Determine layout based on width
+	m.useCompactLayout = m.terminalWidth < 60
+	
+	// Calculate dynamic title character limit based on terminal width
+	// Base calculation: terminal width - prefix (date/time + cursor + spaces)
+	dateTimeWidth := 17 // "2025-01-15 14:30 "
+	prefixWidth := 3    // "> "
+	marginWidth := 2    // Reduced safety margin
+	
+	availableForTitle := m.terminalWidth - dateTimeWidth - prefixWidth - marginWidth
+	
+	// Set minimum and maximum title character limits
+	minTitleChars := 20
+	maxTitleChars := 200
+	
+	// Add a boost for wider terminals to show more characters
+	if m.terminalWidth > 80 {
+		boost := (m.terminalWidth - 80) / 4 // Add extra chars for wide terminals
+		availableForTitle += boost
+	}
+	
+	if availableForTitle < minTitleChars {
+		m.maxTitleChars = minTitleChars
+	} else if availableForTitle > maxTitleChars {
+		m.maxTitleChars = maxTitleChars
+	} else {
+		m.maxTitleChars = availableForTitle
+	}
+	
+	// Reserve space for header and controls based on layout
+	var reservedLines int
+	if m.useCompactLayout {
+		reservedLines = 4 // Minimal header and no controls
+	} else {
+		reservedLines = 9 // Full header and controls
+	}
+	
+	availableLines := m.terminalHeight - reservedLines
+	
+	// Set minimum and maximum display files
+	minDisplayFiles := 5
+	maxDisplayFiles := 30
+	
+	if availableLines < minDisplayFiles {
+		m.maxDisplayFiles = minDisplayFiles
+	} else if availableLines > maxDisplayFiles {
+		m.maxDisplayFiles = maxDisplayFiles
+	} else {
+		m.maxDisplayFiles = availableLines
+	}
+}
+
+// formatResponsiveLine creates a responsive content line that adapts to terminal width
+func (m Model) formatResponsiveLine(cursor, title string, availableWidth int) string {
+	if availableWidth <= 0 {
+		return cursor + " " + title
+	}
+	
+	// Use dynamic title character limit instead of fixed truncation
+	formattedTitle := types.TruncateTitleWithWidth(title, m.maxTitleChars)
+	
+	// Create the display line
+	line := cursor + " " + formattedTitle
+	
+	// Final safety check: ensure line doesn't exceed terminal width
+	finalRunes := []rune(line)
+	if len(finalRunes) > m.terminalWidth && m.terminalWidth > 0 {
+		line = string(finalRunes[:m.terminalWidth])
+	}
+	
+	return line
+}
+
+
+// min returns the smaller of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

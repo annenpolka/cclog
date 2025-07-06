@@ -518,8 +518,8 @@ func TestGetFiles_WithConversationTitles(t *testing.T) {
 	// Title should include conversation title and date in new format
 	// We can't predict exact time, so just check that it contains the pattern
 	title := jsonlFileInfo.Title()
-	if !strings.Contains(title, "goでこれらを人間が読みやすいma...") {
-		t.Errorf("Expected Title() to contain 'goでこれらを人間が読みやすいma...', got '%s'", title)
+	if !strings.Contains(title, "goでこれらを人間が読みやすいmarkdownにパースするコマンドラインツールを作る") {
+		t.Errorf("Expected Title() to contain 'goでこれらを人間が読みやすいmarkdownにパースするコマンドラインツールを作る', got '%s'", title)
 	}
 	
 	// Check date format pattern (YYYY-MM-DD HH:MM)
