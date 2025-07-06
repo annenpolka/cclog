@@ -3,13 +3,16 @@ package filepicker
 import (
 	"os"
 	"path/filepath"
+	"sort"
+	"time"
 )
 
 type FileInfo struct {
-	Name  string
-	Path  string
-	IsDir bool
-	Size  int64
+	Name    string
+	Path    string
+	IsDir   bool
+	Size    int64
+	ModTime time.Time
 }
 
 func (f FileInfo) FilterValue() string {
@@ -24,13 +27,8 @@ func (f FileInfo) Title() string {
 }
 
 func (f FileInfo) Description() string {
-	if f.IsDir {
-		return "Directory"
-	}
-	if f.Size < 1024 {
-		return "< 1KB"
-	}
-	return "1KB+" // 簡単な実装
+	// Display modification time in YYYY-MM-DD HH:MM format for both files and directories
+	return f.ModTime.Format("2006-01-02 15:04")
 }
 
 func GetFiles(dir string) ([]FileInfo, error) {
@@ -47,11 +45,18 @@ func GetFiles(dir string) ([]FileInfo, error) {
 		parentDir := filepath.Dir(absDir)
 		// Only add ".." if not at root and parent is different
 		if parentDir != absDir && parentDir != "." {
+			// Get actual modification time for parent directory
+			var parentModTime time.Time
+			if parentStat, err := os.Stat(parentDir); err == nil {
+				parentModTime = parentStat.ModTime()
+			}
+			
 			parentInfo := FileInfo{
-				Name:  "..",
-				Path:  parentDir,
-				IsDir: true,
-				Size:  0,
+				Name:    "..",
+				Path:    parentDir,
+				IsDir:   true,
+				Size:    0,
+				ModTime: parentModTime,
 			}
 			files = append(files, parentInfo)
 		}
@@ -64,13 +69,39 @@ func GetFiles(dir string) ([]FileInfo, error) {
 		}
 
 		fileInfo := FileInfo{
-			Name:  entry.Name(),
-			Path:  filepath.Join(dir, entry.Name()),
-			IsDir: entry.IsDir(),
-			Size:  info.Size(),
+			Name:    entry.Name(),
+			Path:    filepath.Join(dir, entry.Name()),
+			IsDir:   entry.IsDir(),
+			Size:    info.Size(),
+			ModTime: info.ModTime(),
 		}
 		files = append(files, fileInfo)
 	}
 
-	return files, nil
+	// Sort files by modification time (newest first)
+	// Keep parent directory at the beginning if it exists
+	var parentDir *FileInfo
+	var regularFiles []FileInfo
+	
+	for i, file := range files {
+		if file.Name == ".." {
+			parentDir = &files[i]
+		} else {
+			regularFiles = append(regularFiles, file)
+		}
+	}
+	
+	// Sort regular files by modification time (newest first)
+	sort.Slice(regularFiles, func(i, j int) bool {
+		return regularFiles[i].ModTime.After(regularFiles[j].ModTime)
+	})
+	
+	// Rebuild files slice with parent directory first (if exists)
+	var sortedFiles []FileInfo
+	if parentDir != nil {
+		sortedFiles = append(sortedFiles, *parentDir)
+	}
+	sortedFiles = append(sortedFiles, regularFiles...)
+	
+	return sortedFiles, nil
 }

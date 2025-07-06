@@ -86,7 +86,7 @@ func (m Model) View() string {
 		if i == m.cursor {
 			cursor = ">"
 		}
-		s.WriteString(cursor + " " + file.Title() + "\n")
+		s.WriteString(cursor + " " + file.Title() + " - " + file.Description() + "\n")
 	}
 	
 	// Show help text
