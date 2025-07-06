@@ -144,17 +144,18 @@ func TestModel_EnterSelection(t *testing.T) {
 	}
 	model.cursor = 1
 	
-	// Test enter key selection
+	// Test enter key selection - should now open editor
 	msg := tea.KeyMsg{Type: tea.KeyEnter}
 	updatedModel, cmd := model.Update(msg)
 	m := updatedModel.(Model)
 	
-	if m.selected != "/path/file2.txt" {
-		t.Errorf("Expected selected file to be '/path/file2.txt', got '%s'", m.selected)
+	// Should not set selected file when opening editor
+	if m.selected != "" {
+		t.Errorf("Expected no selection when opening editor, got '%s'", m.selected)
 	}
 	
 	if cmd == nil {
-		t.Error("Expected tea.Quit command after selection")
+		t.Error("Expected editor command after enter on file")
 	}
 }
 
@@ -287,18 +288,19 @@ func TestModel_FileSelection(t *testing.T) {
 	}
 	model.cursor = 0
 	
-	// Simulate enter key on file
+	// Simulate enter key on file - should now open in editor
 	msg := tea.KeyMsg{Type: tea.KeyEnter}
 	updatedModel, cmd := model.Update(msg)
 	m := updatedModel.(Model)
 	
-	// Should select file and quit
+	// Should return editor command (not quit directly)
 	if cmd == nil {
-		t.Error("Should return quit command when selecting file")
+		t.Error("Should return editor command when selecting file")
 	}
 	
-	if m.selected != "/path/file.txt" {
-		t.Errorf("Expected selected file '/path/file.txt', got '%s'", m.selected)
+	// Selected file should not be set when opening in editor
+	if m.selected != "" {
+		t.Errorf("Expected no selection when opening in editor, got '%s'", m.selected)
 	}
 }
 
@@ -400,5 +402,29 @@ func TestModel_SpaceKeyOnDirectory(t *testing.T) {
 	// Directory should not change
 	if m.dir != tempDir {
 		t.Error("Directory should not change when pressing space on directory")
+	}
+}
+
+func TestModel_EditorOpening(t *testing.T) {
+	// Test that editor command is properly created
+	model := NewModel(".")
+	model.files = []FileInfo{
+		{Name: "test.txt", Path: "/tmp/test.txt", IsDir: false},
+	}
+	model.cursor = 0
+	
+	// Simulate enter key on file
+	msg := tea.KeyMsg{Type: tea.KeyEnter}
+	updatedModel, cmd := model.Update(msg)
+	m := updatedModel.(Model)
+	
+	// Should return editor command
+	if cmd == nil {
+		t.Error("Should return editor command when pressing enter on file")
+	}
+	
+	// Should not set selected file
+	if m.selected != "" {
+		t.Errorf("Expected no selection when opening editor, got '%s'", m.selected)
 	}
 }

@@ -1,6 +1,8 @@
 package filepicker
 
 import (
+	"os"
+	"os/exec"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -48,9 +50,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor = 0
 					return m, loadFiles(m.dir)
 				} else {
-					// Select file and quit
-					m.selected = selectedItem.Path
-					return m, tea.Quit
+					// Open file in editor
+					cmd := getEditorCommand(selectedItem.Path)
+					if cmd == nil {
+						// No editor found, fall back to selection
+						m.selected = selectedItem.Path
+						return m, tea.Quit
+					}
+					return m, openInEditor(selectedItem.Path)
 				}
 			}
 		case " ":
@@ -90,7 +97,7 @@ func (m Model) View() string {
 	s.WriteString("\n")
 	s.WriteString("Controls:\n")
 	s.WriteString("  ↑/↓, j/k: Navigate\n")
-	s.WriteString("  Enter: Open folder / Select file\n")
+	s.WriteString("  Enter: Open folder / Open file in editor\n")
 	s.WriteString("  Space: Select file only\n")
 	s.WriteString("  q: Quit\n")
 	
@@ -114,4 +121,39 @@ func loadFiles(dir string) tea.Cmd {
 		}
 		return filesLoadedMsg{files: files}
 	}
+}
+
+// openInEditor opens the specified file in the default editor
+func openInEditor(filepath string) tea.Cmd {
+	return tea.ExecProcess(getEditorCommand(filepath), func(err error) tea.Msg {
+		// Return to TUI after editor exits
+		return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{}}
+	})
+}
+
+// getEditorCommand returns the command to open a file in the default editor
+func getEditorCommand(filepath string) *exec.Cmd {
+	// Get editor from environment variables
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = os.Getenv("VISUAL")
+	}
+	if editor == "" {
+		// Default editors to try
+		editors := []string{"nano", "vim", "vi", "emacs"}
+		for _, e := range editors {
+			if _, err := exec.LookPath(e); err == nil {
+				editor = e
+				break
+			}
+		}
+	}
+	
+	if editor == "" {
+		return nil // No editor found
+	}
+	
+	// Create command to open file in editor
+	cmd := exec.Command(editor, filepath)
+	return cmd
 }
