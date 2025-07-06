@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 	
 	"github.com/annenpolka/cclog/internal/parser"
@@ -143,8 +144,120 @@ func extractConversationTitle(filePath string) string {
 		return ""
 	}
 	
+	// Apply filtering to check if any meaningful messages remain after filtering
+	// Import the formatter package for filtering functionality
+	// Note: We need to add the import at the top of the file
+	filteredLog := &types.ConversationLog{
+		Messages: make([]types.Message, 0),
+		FilePath: log.FilePath,
+	}
+	
+	// Manually filter messages using the same logic as formatter.FilterConversationLog
+	for _, msg := range log.Messages {
+		// Apply the same filtering logic as IsContentfulMessage
+		if isContentfulMessage(msg) {
+			filteredLog.Messages = append(filteredLog.Messages, msg)
+		}
+	}
+	
+	// Skip files with no meaningful messages after filtering
+	if len(filteredLog.Messages) == 0 {
+		return ""
+	}
+	
 	// Extract title using existing title extraction logic
-	return types.ExtractTitle(log)
+	return types.ExtractTitle(filteredLog)
+}
+
+// isContentfulMessage replicates the filtering logic from formatter package
+// to avoid circular imports while maintaining consistency
+func isContentfulMessage(msg types.Message) bool {
+	// Filter out system messages
+	if msg.Type == "system" {
+		return false
+	}
+
+	// Filter out summary messages
+	if msg.Type == "summary" {
+		return false
+	}
+
+	// Filter out meta messages
+	if msg.IsMeta {
+		return false
+	}
+
+	// Extract content and check if it's meaningful
+	content := extractMessageContent(msg.Message)
+	
+	// Filter out empty messages
+	if content == "" {
+		return false
+	}
+
+	// Filter out API errors
+	if strings.Contains(content, "API Error") {
+		return false
+	}
+
+	// Filter out interrupted requests
+	if strings.Contains(content, "[Request interrupted") {
+		return false
+	}
+
+	// Filter out command messages
+	if strings.Contains(content, "<command-name>") {
+		return false
+	}
+
+	// Filter out bash inputs
+	if strings.Contains(content, "<bash-input>") {
+		return false
+	}
+
+	// Filter out command outputs
+	if strings.Contains(content, "<local-command-stdout>") {
+		return false
+	}
+
+	// Filter out system reminders and caveats
+	if strings.Contains(content, "Caveat: The messages below were generated") {
+		return false
+	}
+
+	return true
+}
+
+// extractMessageContent extracts string content from message
+func extractMessageContent(message any) string {
+	// Handle different message content types
+	switch v := message.(type) {
+	case map[string]any:
+		if content, ok := v["content"]; ok {
+			switch contentVal := content.(type) {
+			case string:
+				return contentVal
+			case []any:
+				// Handle array-based content (Claude's complex message format)
+				var result strings.Builder
+				for _, item := range contentVal {
+					if itemMap, ok := item.(map[string]any); ok {
+						if text, ok := itemMap["text"].(string); ok {
+							result.WriteString(text)
+						} else if itemType, ok := itemMap["type"].(string); ok && itemType == "text" {
+							if text, ok := itemMap["text"].(string); ok {
+								result.WriteString(text)
+							}
+						}
+					}
+				}
+				return result.String()
+			}
+		}
+	case string:
+		return v
+	}
+	return ""
 }
 
 // GetFilesRecursive recursively collects all .jsonl files from a directory and its subdirectories

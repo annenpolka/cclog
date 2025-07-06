@@ -783,3 +783,189 @@ func TestFileInfo_TitleWithDateTitleFormatNoDashes(t *testing.T) {
 		})
 	}
 }
+
+// TDD Red Phase: Tests for filtering out files with zero filtered messages
+
+func TestExtractConversationTitle_FilteredEmpty(t *testing.T) {
+	// Red: This test should fail because extractConversationTitle doesn't filter messages yet
+	tempDir := t.TempDir()
+	
+	// Create test files
+	filteredEmptyFile := filepath.Join(tempDir, "filtered_empty.jsonl")
+	emptyFile := filepath.Join(tempDir, "empty.jsonl")
+	normalFile := filepath.Join(tempDir, "normal.jsonl")
+	
+	// Copy test data files
+	filteredEmptyContent := `{"type":"system","message":{"role":"system","content":"System message"},"uuid":"system-uuid","timestamp":"2025-07-06T05:00:00.000Z"}
+{"type":"user","message":{"role":"user","content":"<command-name>/test</command-name>"},"uuid":"command-uuid","timestamp":"2025-07-06T05:00:01.000Z"}
+{"type":"user","message":{"role":"user","content":"<local-command-stdout>output</local-command-stdout>"},"uuid":"output-uuid","timestamp":"2025-07-06T05:00:02.000Z"}
+{"type":"user","message":{"role":"user","content":"API Error: Test error"},"uuid":"error-uuid","timestamp":"2025-07-06T05:00:03.000Z"}
+{"type":"user","message":{"role":"user","content":"[Request interrupted by user]"},"uuid":"interrupt-uuid","timestamp":"2025-07-06T05:00:04.000Z"}
+{"type":"user","message":{"role":"user","content":"Caveat: Test caveat"},"isMeta":true,"uuid":"meta-uuid","timestamp":"2025-07-06T05:00:05.000Z"}
+{"type":"summary","summary":"Test conversation with only filtered messages"}`
+	
+	normalContent := `{"type":"user","message":{"role":"user","content":"This is a normal message"},"uuid":"normal-uuid","timestamp":"2025-07-06T05:00:00.000Z"}
+{"type":"assistant","message":{"role":"assistant","content":"This is a normal response"},"uuid":"assistant-uuid","timestamp":"2025-07-06T05:00:01.000Z"}`
+	
+	// Write test files
+	if err := os.WriteFile(filteredEmptyFile, []byte(filteredEmptyContent), 0644); err != nil {
+		t.Fatalf("Failed to create filtered empty file: %v", err)
+	}
+	if err := os.WriteFile(emptyFile, []byte(""), 0644); err != nil {
+		t.Fatalf("Failed to create empty file: %v", err)
+	}
+	if err := os.WriteFile(normalFile, []byte(normalContent), 0644); err != nil {
+		t.Fatalf("Failed to create normal file: %v", err)
+	}
+	
+	// Test extractConversationTitle behavior
+	tests := []struct {
+		name     string
+		file     string
+		expected string
+	}{
+		{
+			name:     "Empty file should return empty string",
+			file:     emptyFile,
+			expected: "",
+		},
+		{
+			name:     "File with only filtered messages should return empty string",
+			file:     filteredEmptyFile,
+			expected: "",
+		},
+		{
+			name:     "Normal file should return title",
+			file:     normalFile,
+			expected: "This is a normal message",
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractConversationTitle(tt.file)
+			if tt.expected == "" {
+				if result != "" {
+					t.Errorf("Expected empty string for %s, got %s", tt.name, result)
+				}
+			} else {
+				if result == "" {
+					t.Errorf("Expected non-empty string for %s, got empty", tt.name)
+				}
+				if !strings.Contains(result, tt.expected) {
+					t.Errorf("Expected title to contain %s, got %s", tt.expected, result)
+				}
+			}
+		})
+	}
+}
+
+func TestGetFiles_SkipsFilteredEmptyFiles(t *testing.T) {
+	// Red: This test should fail because GetFiles doesn't skip filtered empty files yet
+	tempDir := t.TempDir()
+	
+	// Create test files using the testdata files
+	filteredEmptyFile := filepath.Join(tempDir, "filtered_empty.jsonl")
+	emptyFile := filepath.Join(tempDir, "empty.jsonl")
+	normalFile := filepath.Join(tempDir, "normal.jsonl")
+	
+	// Copy content from testdata
+	filteredEmptyContent := `{"type":"system","message":{"role":"system","content":"System message"},"uuid":"system-uuid","timestamp":"2025-07-06T05:00:00.000Z"}
+{"type":"user","message":{"role":"user","content":"<command-name>/test</command-name>"},"uuid":"command-uuid","timestamp":"2025-07-06T05:00:01.000Z"}
+{"type":"user","message":{"role":"user","content":"API Error: Test error"},"uuid":"error-uuid","timestamp":"2025-07-06T05:00:02.000Z"}
+{"type":"summary","summary":"Test conversation with only filtered messages"}`
+	
+	normalContent := `{"type":"user","message":{"role":"user","content":"This is a normal message"},"uuid":"normal-uuid","timestamp":"2025-07-06T05:00:00.000Z"}
+{"type":"assistant","message":{"role":"assistant","content":"This is a normal response"},"uuid":"assistant-uuid","timestamp":"2025-07-06T05:00:01.000Z"}`
+	
+	// Write test files
+	if err := os.WriteFile(filteredEmptyFile, []byte(filteredEmptyContent), 0644); err != nil {
+		t.Fatalf("Failed to create filtered empty file: %v", err)
+	}
+	if err := os.WriteFile(emptyFile, []byte(""), 0644); err != nil {
+		t.Fatalf("Failed to create empty file: %v", err)
+	}
+	if err := os.WriteFile(normalFile, []byte(normalContent), 0644); err != nil {
+		t.Fatalf("Failed to create normal file: %v", err)
+	}
+	
+	// Test GetFiles
+	files, err := GetFiles(tempDir)
+	if err != nil {
+		t.Fatalf("GetFiles failed: %v", err)
+	}
+	
+	// Count JSONL files
+	jsonlFiles := make(map[string]bool)
+	for _, file := range files {
+		if filepath.Ext(file.Name) == ".jsonl" {
+			jsonlFiles[file.Name] = true
+		}
+	}
+	
+	// Should only have normal.jsonl (filtered empty and empty files should be skipped)
+	if len(jsonlFiles) != 1 {
+		t.Errorf("Expected 1 JSONL file, got %d: %v", len(jsonlFiles), jsonlFiles)
+	}
+	
+	if !jsonlFiles["normal.jsonl"] {
+		t.Error("Expected normal.jsonl to be present")
+	}
+	
+	if jsonlFiles["filtered_empty.jsonl"] {
+		t.Error("Expected filtered_empty.jsonl to be skipped")
+	}
+	
+	if jsonlFiles["empty.jsonl"] {
+		t.Error("Expected empty.jsonl to be skipped")
+	}
+}
+
+func TestGetFilesRecursive_SkipsFilteredEmptyFiles(t *testing.T) {
+	// Red: This test should fail because GetFilesRecursive doesn't skip filtered empty files yet
+	tempDir := t.TempDir()
+	
+	// Create nested structure
+	subDir := filepath.Join(tempDir, "subdir")
+	if err := os.Mkdir(subDir, 0755); err != nil {
+		t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+	
+	// Create test files
+	filteredEmptyFile := filepath.Join(tempDir, "filtered_empty.jsonl")
+	emptyFile := filepath.Join(subDir, "empty.jsonl")
+	normalFile := filepath.Join(tempDir, "normal.jsonl")
+	
+	filteredEmptyContent := `{"type":"system","message":{"role":"system","content":"System message"},"uuid":"system-uuid","timestamp":"2025-07-06T05:00:00.000Z"}
+{"type":"user","message":{"role":"user","content":"<command-name>/test</command-name>"},"uuid":"command-uuid","timestamp":"2025-07-06T05:00:01.000Z"}
+{"type":"summary","summary":"Test conversation with only filtered messages"}`
+	
+	normalContent := `{"type":"user","message":{"role":"user","content":"This is a normal message"},"uuid":"normal-uuid","timestamp":"2025-07-06T05:00:00.000Z"}
+{"type":"assistant","message":{"role":"assistant","content":"This is a normal response"},"uuid":"assistant-uuid","timestamp":"2025-07-06T05:00:01.000Z"}`
+	
+	// Write test files
+	if err := os.WriteFile(filteredEmptyFile, []byte(filteredEmptyContent), 0644); err != nil {
+		t.Fatalf("Failed to create filtered empty file: %v", err)
+	}
+	if err := os.WriteFile(emptyFile, []byte(""), 0644); err != nil {
+		t.Fatalf("Failed to create empty file: %v", err)
+	}
+	if err := os.WriteFile(normalFile, []byte(normalContent), 0644); err != nil {
+		t.Fatalf("Failed to create normal file: %v", err)
+	}
+	
+	// Test GetFilesRecursive
+	files, err := GetFilesRecursive(tempDir)
+	if err != nil {
+		t.Fatalf("GetFilesRecursive failed: %v", err)
+	}
+	
+	// Should only have normal.jsonl
+	if len(files) != 1 {
+		t.Errorf("Expected 1 file, got %d", len(files))
+	}
+	
+	if len(files) > 0 && files[0].Name != "normal.jsonl" {
+		t.Errorf("Expected normal.jsonl, got %s", files[0].Name)
+	}
+}
