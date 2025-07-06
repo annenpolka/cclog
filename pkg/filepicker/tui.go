@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"cclog/internal/formatter"
+	"cclog/internal/parser"
 )
 
 type Model struct {
@@ -50,14 +52,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.cursor = 0
 					return m, loadFiles(m.dir)
 				} else {
-					// Open file in editor
-					cmd := getEditorCommand(selectedItem.Path)
-					if cmd == nil {
-						// No editor found, fall back to selection
-						m.selected = selectedItem.Path
-						return m, tea.Quit
-					}
-					return m, openInEditor(selectedItem.Path)
+					// Convert to markdown and open in editor
+					return m, convertAndOpenInEditor(selectedItem.Path)
 				}
 			}
 		case " ":
@@ -156,4 +152,106 @@ func getEditorCommand(filepath string) *exec.Cmd {
 	// Create command to open file in editor
 	cmd := exec.Command(editor, filepath)
 	return cmd
+}
+
+// convertAndOpenInEditor converts JSONL file to markdown and opens it in editor
+func convertAndOpenInEditor(jsonlPath string) tea.Cmd {
+	return func() tea.Msg {
+		// Convert JSONL to markdown
+		markdownContent, err := convertJSONLToMarkdown(jsonlPath)
+		if err != nil {
+			// If conversion fails, fall back to opening original file
+			return openInEditor(jsonlPath)()
+		}
+		
+		// Create temporary markdown file
+		tempFile, err := os.CreateTemp("", "cclog_*.md")
+		if err != nil {
+			// If temp file creation fails, fall back to opening original file
+			return openInEditor(jsonlPath)()
+		}
+		
+		// Write markdown content to temp file
+		if _, err := tempFile.Write([]byte(markdownContent)); err != nil {
+			tempFile.Close()
+			os.Remove(tempFile.Name())
+			return openInEditor(jsonlPath)()
+		}
+		tempFile.Close()
+		
+		// Open temp file in editor with cleanup
+		return openMarkdownInEditor(tempFile.Name())()
+	}
+}
+
+// convertJSONLToMarkdown converts a JSONL file to markdown format
+func convertJSONLToMarkdown(jsonlPath string) (string, error) {
+	// Parse JSONL file
+	log, err := parser.ParseJSONLFile(jsonlPath)
+	if err != nil {
+		return "", err
+	}
+	
+	// Apply filtering (remove system messages)
+	filteredLog := formatter.FilterConversationLog(log, true)
+	
+	// Convert to markdown
+	markdown := formatter.FormatConversationToMarkdownWithOptions(filteredLog, formatter.FormatOptions{ShowUUID: false})
+	
+	return markdown, nil
+}
+
+// openMarkdownInEditor opens a markdown file in editor and cleans up after
+func openMarkdownInEditor(markdownPath string) tea.Cmd {
+	return func() tea.Msg {
+		cmd := getEditorCommand(markdownPath)
+		if cmd == nil {
+			os.Remove(markdownPath)
+			return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{}}
+		}
+		
+		// Check if the editor is VS Code or other background editors
+		editorName := cmd.Args[0]
+		if isBackgroundEditor(editorName) {
+			// For background editors, use --wait flag and don't use ExecProcess
+			cmd.Args = append(cmd.Args[:1], append([]string{"--wait"}, cmd.Args[1:]...)...)
+			
+			// Run the command and wait for it to complete
+			if err := cmd.Run(); err != nil {
+				// If command fails, clean up and return
+				os.Remove(markdownPath)
+				return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{}}
+			}
+			
+			// Clean up after editor closes
+			os.Remove(markdownPath)
+			return tea.Quit
+		}
+		
+		// For terminal editors, use ExecProcess
+		return tea.ExecProcess(cmd, func(err error) tea.Msg {
+			// Clean up temporary file after editor closes
+			os.Remove(markdownPath)
+			// Return to TUI after editor exits
+			return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{}}
+		})()
+	}
+}
+
+// isBackgroundEditor checks if the editor runs in background
+func isBackgroundEditor(editorPath string) bool {
+	// Extract basename from path
+	editorName := editorPath
+	if lastSlash := strings.LastIndex(editorPath, "/"); lastSlash >= 0 {
+		editorName = editorPath[lastSlash+1:]
+	}
+	
+	// Known background editors
+	backgroundEditors := []string{"code", "codium", "subl", "atom"}
+	for _, bg := range backgroundEditors {
+		if editorName == bg {
+			return true
+		}
+	}
+	return false
 }

@@ -27,6 +27,11 @@ func main() {
 			os.Exit(1)
 		}
 		
+		// If no file selected (user cancelled), exit gracefully
+		if selectedFile == "" {
+			return
+		}
+		
 		// Run cclog on the selected file
 		newConfig := config
 		newConfig.InputPath = selectedFile

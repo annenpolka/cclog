@@ -22,7 +22,7 @@ func RunTUI(config Config) (string, error) {
 	if m, ok := finalModel.(filepicker.Model); ok {
 		selectedFile := m.GetSelectedFile()
 		if selectedFile == "" {
-			return "", fmt.Errorf("user cancelled selection")
+			return "", nil // User cancelled, not an error
 		}
 		return selectedFile, nil
 	}
