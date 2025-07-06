@@ -80,7 +80,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.preview.SetVisible(!m.preview.IsVisible())
 			// Update preview content if visible
 			if m.preview.IsVisible() {
-				m.updatePreviewContent()
+				if cmd := m.updatePreviewContent(); cmd != nil {
+					cmds = append(cmds, cmd)
+				}
 			}
 			return m, tea.Batch(cmds...)
 		case "up", "k":
@@ -92,7 +94,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				// Update preview if visible
 				if m.preview.IsVisible() {
-					m.updatePreviewContent()
+					if cmd := m.updatePreviewContent(); cmd != nil {
+						cmds = append(cmds, cmd)
+					}
 				}
 			}
 		case "down", "j":
@@ -104,7 +108,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				// Update preview if visible
 				if m.preview.IsVisible() {
-					m.updatePreviewContent()
+					if cmd := m.updatePreviewContent(); cmd != nil {
+						cmds = append(cmds, cmd)
+					}
 				}
 			}
 		case "enter":
@@ -132,7 +138,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Initialize preview size and content if visible
 		if m.preview.IsVisible() {
 			m.updatePreviewSize()
-			m.updatePreviewContent()
+			if cmd := m.updatePreviewContent(); cmd != nil {
+				cmds = append(cmds, cmd)
+			}
 		}
 	}
 	return m, tea.Batch(cmds...)
@@ -505,28 +513,27 @@ func (m *Model) updatePreviewSize() {
 }
 
 // updatePreviewContent updates the preview content based on current selection
-func (m *Model) updatePreviewContent() {
+func (m *Model) updatePreviewContent() tea.Cmd {
 	if m.preview == nil || !m.preview.IsVisible() || len(m.files) == 0 {
-		return
+		return nil
 	}
 	
 	selectedFile := m.files[m.cursor]
 	if selectedFile.IsDir {
 		// Clear preview for directories
-		m.preview.SetContent("")
-		return
+		return m.preview.SetContent("")
 	}
 	
 	// Generate preview for JSONL files
 	if strings.HasSuffix(selectedFile.Path, ".jsonl") {
 		content, err := GeneratePreview(selectedFile.Path)
 		if err != nil {
-			m.preview.SetContent("Error generating preview: " + err.Error())
+			return m.preview.SetContent("Error generating preview: " + err.Error())
 		} else {
-			m.preview.SetContent(content)
+			return m.preview.SetContent(content)
 		}
 	} else {
-		m.preview.SetContent("Preview not available for this file type")
+		return m.preview.SetContent("Preview not available for this file type")
 	}
 }
 

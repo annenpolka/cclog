@@ -1,6 +1,7 @@
 package filepicker
 
 import (
+	"os"
 	"testing"
 )
 
@@ -30,7 +31,7 @@ func TestPreviewModel_SetContent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			preview := NewPreviewModel()
-			preview.SetContent(tt.content)
+			_ = preview.SetContent(tt.content)
 			
 			if preview.GetContent() != tt.expectedContent {
 				t.Errorf("SetContent() = %v, want %v", preview.GetContent(), tt.expectedContent)
@@ -162,5 +163,30 @@ func TestPreviewModel_DefaultState(t *testing.T) {
 	width, height := preview.GetSize()
 	if width != 0 || height != 0 {
 		t.Errorf("NewPreviewModel() should start with size (0, 0), got (%d, %d)", width, height)
+	}
+}
+
+func TestPreviewModel_Cleanup(t *testing.T) {
+	preview := NewPreviewModel()
+	
+	// Set some content to create temp file
+	_ = preview.SetContent("# Test Content\n\nThis is a test.")
+	
+	// Check that temp file was created
+	if preview.tempFile == "" {
+		t.Errorf("SetContent should create a temp file")
+	}
+	
+	// Check temp file exists
+	if _, err := os.Stat(preview.tempFile); os.IsNotExist(err) {
+		t.Errorf("Temp file should exist after SetContent")
+	}
+	
+	// Cleanup should remove temp file
+	preview.Cleanup()
+	
+	// Check temp file is removed
+	if preview.tempFile != "" {
+		t.Errorf("Cleanup should clear tempFile path")
 	}
 }
