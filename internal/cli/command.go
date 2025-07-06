@@ -19,6 +19,7 @@ type Config struct {
 	ShowHelp    bool
 	IncludeAll  bool
 	ShowUUID    bool
+	TUIMode     bool
 }
 
 // ParseArgs parses command-line arguments and returns configuration
@@ -48,6 +49,8 @@ func ParseArgs(args []string) (Config, error) {
 			config.IncludeAll = true
 		case "--show-uuid":
 			config.ShowUUID = true
+		case "--tui":
+			config.TUIMode = true
 		default:
 			if config.InputPath == "" {
 				config.InputPath = arg
@@ -55,8 +58,13 @@ func ParseArgs(args []string) (Config, error) {
 		}
 	}
 
-	if config.InputPath == "" && !config.ShowHelp {
+	if config.InputPath == "" && !config.ShowHelp && !config.TUIMode {
 		return Config{}, fmt.Errorf("input path is required")
+	}
+	
+	// Set default directory for TUI mode if no input path specified
+	if config.TUIMode && config.InputPath == "" {
+		config.InputPath = "."
 	}
 
 	return config, nil
@@ -66,6 +74,11 @@ func ParseArgs(args []string) (Config, error) {
 func RunCommand(config Config) (string, error) {
 	if config.ShowHelp {
 		return GetHelpText(), nil
+	}
+	
+	if config.TUIMode {
+		// TUI mode is handled externally, return empty
+		return "", nil
 	}
 
 	// Validate input path exists
@@ -135,6 +148,7 @@ OPTIONS:
     -o, --output FILE  Write output to file instead of stdout
     --include-all      Include all messages (no filtering of empty/system messages)
     --show-uuid        Show UUID metadata for each message
+    --tui              Open interactive file picker (TUI mode)
     -h, --help         Show this help message
 
 EXAMPLES:
@@ -147,7 +161,10 @@ EXAMPLES:
     # Convert all JSONL files in directory
     cclog -d /path/to/logs -o combined.md
 
-    # Convert directory to stdout
-    cclog -d /path/to/logs
+    # Open interactive file picker (TUI mode)
+    cclog --tui
+
+    # Open TUI in specific directory
+    cclog --tui /path/to/logs
 `)
 }

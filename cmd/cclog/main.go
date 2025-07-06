@@ -20,6 +20,33 @@ func main() {
 		return
 	}
 
+	if config.TUIMode {
+		selectedFile, err := cli.RunTUI(config)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "TUI Error: %v\n", err)
+			os.Exit(1)
+		}
+		
+		// Run cclog on the selected file
+		newConfig := config
+		newConfig.InputPath = selectedFile
+		newConfig.TUIMode = false
+		
+		output, err := cli.RunCommand(newConfig)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		
+		// Print output
+		if config.OutputPath == "" {
+			fmt.Print(output)
+		} else {
+			fmt.Printf("Output written to: %s\n", config.OutputPath)
+		}
+		return
+	}
+
 	output, err := cli.RunCommand(config)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
