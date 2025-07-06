@@ -137,3 +137,71 @@ func TestParseJSONLFileLargeLines(t *testing.T) {
 		t.Error("Failed to cast normal message to map")
 	}
 }
+
+func TestParseJSONLFileEmpty(t *testing.T) {
+	// Create a temporary empty file
+	tmpFile := filepath.Join(t.TempDir(), "empty.jsonl")
+	
+	err := os.WriteFile(tmpFile, []byte(""), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create empty test file: %v", err)
+	}
+	
+	// Test parsing empty file
+	log, err := ParseJSONLFile(tmpFile)
+	if err != nil {
+		t.Fatalf("Failed to parse empty JSONL file: %v", err)
+	}
+	
+	if len(log.Messages) != 0 {
+		t.Errorf("Expected 0 messages for empty file, got %d", len(log.Messages))
+	}
+}
+
+func TestParseJSONLDirectoryWithEmptyFiles(t *testing.T) {
+	// Create a temporary directory with mixed files
+	tmpDir := t.TempDir()
+	
+	// Create an empty file
+	emptyFile := filepath.Join(tmpDir, "empty.jsonl")
+	err := os.WriteFile(emptyFile, []byte(""), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create empty test file: %v", err)
+	}
+	
+	// Create a file with only whitespace
+	whitespaceFile := filepath.Join(tmpDir, "whitespace.jsonl")
+	err = os.WriteFile(whitespaceFile, []byte("   \n  \n"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create whitespace test file: %v", err)
+	}
+	
+	// Create a valid file
+	validFile := filepath.Join(tmpDir, "valid.jsonl")
+	validContent := `{"type":"user","message":{"role":"user","content":"test"},"uuid":"test-uuid","timestamp":"2025-07-06T05:01:44.663Z"}`
+	err = os.WriteFile(validFile, []byte(validContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create valid test file: %v", err)
+	}
+	
+	// Test parsing directory
+	logs, err := ParseJSONLDirectory(tmpDir)
+	if err != nil {
+		t.Fatalf("Failed to parse JSONL directory: %v", err)
+	}
+	
+	// Debug: print what files were found
+	t.Logf("Found %d log files", len(logs))
+	for i, log := range logs {
+		t.Logf("Log %d: %s with %d messages", i, log.FilePath, len(log.Messages))
+	}
+	
+	// Should only return the valid file, empty files should be excluded
+	if len(logs) != 1 {
+		t.Errorf("Expected 1 log file (empty files should be excluded), got %d", len(logs))
+	}
+	
+	if len(logs[0].Messages) != 1 {
+		t.Errorf("Expected 1 message in valid log, got %d", len(logs[0].Messages))
+	}
+}

@@ -92,7 +92,12 @@ func GetFiles(dir string) ([]FileInfo, error) {
 		
 		// Extract conversation title for JSONL files
 		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".jsonl" {
-			fileInfo.ConversationTitle = extractConversationTitle(fileInfo.Path)
+			title := extractConversationTitle(fileInfo.Path)
+			// Skip empty files (when title extraction fails due to empty file)
+			if title == "" {
+				continue
+			}
+			fileInfo.ConversationTitle = title
 		}
 		files = append(files, fileInfo)
 	}
@@ -130,6 +135,11 @@ func extractConversationTitle(filePath string) string {
 	// Parse the JSONL file to extract conversation title
 	log, err := parser.ParseJSONLFile(filePath)
 	if err != nil {
+		return ""
+	}
+	
+	// Skip empty files - return empty string to indicate this file should be filtered out
+	if len(log.Messages) == 0 {
 		return ""
 	}
 	
@@ -171,7 +181,12 @@ func GetFilesRecursive(rootDir string) ([]FileInfo, error) {
 		}
 		
 		// Extract conversation title for JSONL files
-		fileInfo.ConversationTitle = extractConversationTitle(path)
+		title := extractConversationTitle(path)
+		// Skip empty files (when title extraction fails due to empty file)
+		if title == "" {
+			return nil
+		}
+		fileInfo.ConversationTitle = title
 		
 		allFiles = append(allFiles, fileInfo)
 		return nil

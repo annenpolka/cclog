@@ -63,6 +63,12 @@ func ParseJSONLDirectory(dirPath string) ([]*types.ConversationLog, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse file %s: %w", file, err)
 		}
+		
+		// Skip empty files (files with no messages)
+		if len(log.Messages) == 0 {
+			continue
+		}
+		
 		logs = append(logs, log)
 	}
 

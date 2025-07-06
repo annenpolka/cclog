@@ -326,20 +326,22 @@ func TestGetFilesRecursive(t *testing.T) {
 		t.Fatalf("Failed to create nested directory: %v", err)
 	}
 	
-	// Create files at different levels
+	// Create files at different levels with valid JSONL content
 	rootFile := filepath.Join(tempDir, "root.jsonl")
 	subFile := filepath.Join(subDir, "sub.jsonl")
 	nestedFile := filepath.Join(nestedDir, "nested.jsonl")
 	
-	if err := os.WriteFile(rootFile, []byte("root content"), 0644); err != nil {
+	validJSONLContent := `{"type":"user","message":{"role":"user","content":"test"},"uuid":"test-uuid","timestamp":"2025-07-06T05:01:44.663Z"}`
+	
+	if err := os.WriteFile(rootFile, []byte(validJSONLContent), 0644); err != nil {
 		t.Fatalf("Failed to create root file: %v", err)
 	}
 	
-	if err := os.WriteFile(subFile, []byte("sub content"), 0644); err != nil {
+	if err := os.WriteFile(subFile, []byte(validJSONLContent), 0644); err != nil {
 		t.Fatalf("Failed to create sub file: %v", err)
 	}
 	
-	if err := os.WriteFile(nestedFile, []byte("nested content"), 0644); err != nil {
+	if err := os.WriteFile(nestedFile, []byte(validJSONLContent), 0644); err != nil {
 		t.Fatalf("Failed to create nested file: %v", err)
 	}
 	
@@ -380,9 +382,10 @@ func TestGetFilesRecursive_WithRelativePaths(t *testing.T) {
 		t.Fatalf("Failed to create nested directories: %v", err)
 	}
 	
-	// Create file in nested directory
+	// Create file in nested directory with valid JSONL content
 	nestedFile := filepath.Join(subDir, "conversation.jsonl")
-	if err := os.WriteFile(nestedFile, []byte("content"), 0644); err != nil {
+	validJSONLContent := `{"type":"user","message":{"role":"user","content":"test"},"uuid":"test-uuid","timestamp":"2025-07-06T05:01:44.663Z"}`
+	if err := os.WriteFile(nestedFile, []byte(validJSONLContent), 0644); err != nil {
 		t.Fatalf("Failed to create nested file: %v", err)
 	}
 	
