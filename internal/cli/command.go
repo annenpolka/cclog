@@ -150,7 +150,10 @@ func RunCommand(config Config) (string, error) {
 			filteredLogs[i] = formatter.FilterConversationLog(log, !config.IncludeAll)
 		}
 
-		markdown = formatter.FormatMultipleConversationsToMarkdownWithOptions(filteredLogs, formatter.FormatOptions{ShowUUID: config.ShowUUID})
+		markdown = formatter.FormatMultipleConversationsToMarkdownWithOptions(filteredLogs, formatter.FormatOptions{
+			ShowUUID:         config.ShowUUID,
+			ShowPlaceholders: config.IncludeAll,
+		})
 		
 		// Add title if requested
 		if config.ShowTitle && len(filteredLogs) > 0 {
@@ -166,7 +169,10 @@ func RunCommand(config Config) (string, error) {
 
 		// Apply filtering
 		filteredLog := formatter.FilterConversationLog(log, !config.IncludeAll)
-		markdown = formatter.FormatConversationToMarkdownWithOptions(filteredLog, formatter.FormatOptions{ShowUUID: config.ShowUUID})
+		markdown = formatter.FormatConversationToMarkdownWithOptions(filteredLog, formatter.FormatOptions{
+			ShowUUID:         config.ShowUUID,
+			ShowPlaceholders: config.IncludeAll,
+		})
 		
 		// Add title if requested
 		if config.ShowTitle {
