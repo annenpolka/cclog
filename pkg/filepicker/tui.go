@@ -191,11 +191,8 @@ func (m Model) View() string {
 	
 	s.WriteString("📁 " + dirPath + "\n\n")
 	
-	// Calculate available space for file list
-	listHeight := m.terminalHeight - 5 // Reserve space for header and help
-	if m.preview.IsVisible() {
-		listHeight = listHeight / 2 // Split screen when preview is visible
-	}
+	// Calculate available space for file list using dynamic layout
+	listHeight := m.getListHeight()
 	
 	// Adjust maxDisplayFiles based on available space
 	originalMaxDisplay := m.maxDisplayFiles
@@ -586,16 +583,38 @@ func (m *Model) updatePreviewSize() {
 	}
 	
 	previewWidth := m.terminalWidth - 4 // Account for borders
-	previewHeight := (m.terminalHeight / 2) - 3 // Split screen, account for borders
-	
 	if previewWidth < 0 {
 		previewWidth = 0
 	}
-	if previewHeight < 0 {
-		previewHeight = 0
+	
+	// Use dynamic height calculation
+	m.preview.SetDynamicHeight(m.terminalHeight, m.preview.GetSplitRatio(), 10)
+	m.preview.SetSize(previewWidth, m.preview.height)
+}
+
+// updateDynamicLayout updates the layout based on split ratio
+func (m *Model) updateDynamicLayout(splitRatio float64) {
+	if m.preview == nil {
+		return
 	}
 	
-	m.preview.SetSize(previewWidth, previewHeight)
+	previewWidth := m.terminalWidth - 4
+	if previewWidth < 0 {
+		previewWidth = 0
+	}
+	
+	m.preview.SetDynamicHeight(m.terminalHeight, splitRatio, 10)
+	m.preview.SetSize(previewWidth, m.preview.height)
+}
+
+// getListHeight returns the height available for the file list
+func (m *Model) getListHeight() int {
+	if !m.preview.IsVisible() {
+		return m.terminalHeight - 5 // Full height minus header and help
+	}
+	
+	_, listHeight := calculatePreviewHeight(m.terminalHeight, m.preview.GetSplitRatio(), 10)
+	return listHeight
 }
 
 // updatePreviewContent updates the preview content based on current selection
