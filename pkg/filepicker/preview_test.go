@@ -3,6 +3,7 @@ package filepicker
 import (
 	"os"
 	"testing"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestPreviewModel_SetContent(t *testing.T) {
@@ -188,5 +189,66 @@ func TestPreviewModel_Cleanup(t *testing.T) {
 	// Check temp file is removed
 	if preview.tempFile != "" {
 		t.Errorf("Cleanup should clear tempFile path")
+	}
+}
+
+func TestPreviewModel_KeyBindings_GoToTop(t *testing.T) {
+	preview := NewPreviewModel()
+	
+	// Set some content and scroll position
+	cmd := preview.SetContent("# Test Content\n\nLine 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6")
+	if cmd != nil {
+		// Execute the command to load content
+		_ = cmd()
+	}
+	preview.SetSize(80, 10)
+	
+	// Simulate scrolling down first (so we have somewhere to scroll back to)
+	preview.markdownBubble.Viewport.ScrollDown(5)
+	initialOffset := preview.markdownBubble.Viewport.YOffset
+	
+	// Simulate 'g' key press
+	keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'g'}}
+	preview.Update(keyMsg)
+	
+	// Check that we're now at the top
+	if preview.markdownBubble.Viewport.YOffset != 0 {
+		t.Errorf("After 'g' key press, should be at top (YOffset=0), got YOffset=%d, initial was %d", preview.markdownBubble.Viewport.YOffset, initialOffset)
+	}
+}
+
+func TestPreviewModel_KeyBindings_GoToBottom(t *testing.T) {
+	preview := NewPreviewModel()
+	
+	// Set some content that will be longer than the viewport
+	longContent := "# Test Content\n\n"
+	for i := 0; i < 20; i++ {
+		longContent += "Line " + string(rune('A'+i)) + "\n"
+	}
+	cmd := preview.SetContent(longContent)
+	if cmd != nil {
+		// Execute the command to load content
+		_ = cmd()
+	}
+	preview.SetSize(80, 10)
+	
+	// Initially should be at top
+	if preview.markdownBubble.Viewport.YOffset != 0 {
+		t.Errorf("Should start at top")
+	}
+	
+	// Simulate 'G' key press (shift+g)
+	keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'G'}}
+	preview.Update(keyMsg)
+	
+	// Check that we're now at the bottom
+	// The bottom position should be greater than 0 for content longer than viewport
+	finalOffset := preview.markdownBubble.Viewport.YOffset
+	totalLines := preview.markdownBubble.Viewport.TotalLineCount()
+	height := preview.markdownBubble.Viewport.Height
+	
+	// For content that's longer than viewport, we should have scrolled down
+	if totalLines > height && finalOffset == 0 {
+		t.Errorf("After 'G' key press, should be at bottom (YOffset>0), got YOffset=%d, totalLines=%d, height=%d", finalOffset, totalLines, height)
 	}
 }

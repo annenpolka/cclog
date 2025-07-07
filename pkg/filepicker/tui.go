@@ -256,19 +256,20 @@ func (m Model) View() string {
 		s.WriteString("  s: Toggle filter\n")
 		if m.preview.IsVisible() {
 			s.WriteString("  d/u: Scroll preview down/up\n")
+			s.WriteString("  g/G: Go to top/bottom of preview\n")
 		}
 		s.WriteString("  q: Quit\n")
 	} else if m.terminalWidth < 40 {
 		// Very narrow: minimal help
 		if m.preview.IsVisible() {
-			s.WriteString("\nj/k:Nav d/u:Scroll p:Preview s:Filter q:Quit")
+			s.WriteString("\nj/k:Nav d/u:Scroll g/G:Top/Bot p:Preview s:Filter q:Quit")
 		} else {
 			s.WriteString("\nj/k:Nav Enter:Open p:Preview s:Filter q:Quit")
 		}
 	} else {
 		// Compact: abbreviated help
 		if m.preview.IsVisible() {
-			s.WriteString("\nNav:↑↓/jk Open:Enter Preview:p Filter:s Scroll:d/u Quit:q")
+			s.WriteString("\nNav:↑↓/jk Open:Enter Preview:p Filter:s Scroll:d/u g/G:Top/Bot Quit:q")
 		} else {
 			s.WriteString("\nNav:↑↓/jk Open:Enter Preview:p Filter:s Quit:q")
 		}

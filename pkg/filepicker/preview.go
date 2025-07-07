@@ -107,6 +107,15 @@ func (p *PreviewModel) Update(msg tea.Msg) (*PreviewModel, tea.Cmd) {
 		case "u", "pgup":
 			// Scroll up using viewport
 			p.markdownBubble.Viewport.ScrollUp(3)
+		case "g":
+			// Go to top
+			p.markdownBubble.GotoTop()
+		case "G":
+			// Go to bottom by setting YOffset to maximum value
+			p.markdownBubble.Viewport.YOffset = p.markdownBubble.Viewport.TotalLineCount() - p.markdownBubble.Viewport.Height
+			if p.markdownBubble.Viewport.YOffset < 0 {
+				p.markdownBubble.Viewport.YOffset = 0
+			}
 		}
 	}
 	
