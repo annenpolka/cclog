@@ -35,14 +35,14 @@ func TestModelUpdatePreviewSize(t *testing.T) {
 			terminalWidth:    40,
 			terminalHeight:   20,
 			expectedPreviewWidth: 40, // Use full width
-			expectedPreviewHeight: 11, // (20 - 6) * 0.8 = 11.2 -> 11
+			expectedPreviewHeight: 10, // Adaptive split gives more space to list
 		},
 		{
 			name:             "Very small terminal",
 			terminalWidth:    10,
 			terminalHeight:   8,
 			expectedPreviewWidth: 10, // Use full width
-			expectedPreviewHeight: 10, // Minimum height constraint
+			expectedPreviewHeight: 0, // Prioritize list on very small screens
 		},
 	}
 

@@ -142,10 +142,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
-				// Scroll up if cursor goes above visible range
-				if m.cursor < m.scrollOffset {
-					m.scrollOffset = m.cursor
-				}
+				// Ensure cursor visibility after movement
+				m.ensureCursorVisible()
 				// Update preview if visible
 				if m.preview.IsVisible() {
 					if cmd := m.updatePreviewContent(); cmd != nil {
@@ -156,10 +154,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "j":
 			if m.cursor < len(m.files)-1 {
 				m.cursor++
-				// Scroll down if cursor goes below visible range
-				if m.cursor >= m.scrollOffset+m.maxDisplayFiles {
-					m.scrollOffset = m.cursor - m.maxDisplayFiles + 1
-				}
+				// Ensure cursor visibility after movement
+				m.ensureCursorVisible()
 				// Update preview if visible
 				if m.preview.IsVisible() {
 					if cmd := m.updatePreviewContent(); cmd != nil {
@@ -230,9 +226,12 @@ func (m Model) View() string {
 	
 	// Adjust maxDisplayFiles based on available space
 	originalMaxDisplay := m.maxDisplayFiles
-	if listHeight > 0 && listHeight < m.maxDisplayFiles {
+	if listHeight > 0 {
 		m.maxDisplayFiles = listHeight
 	}
+	
+	// Ensure cursor is visible with updated display count
+	m.ensureCursorVisible()
 	
 	// Calculate display range with scrolling
 	totalFiles := len(m.files)
@@ -681,11 +680,59 @@ func (m *Model) updateDynamicLayout(splitRatio float64) {
 // getListHeight returns the height available for the file list
 func (m *Model) getListHeight() int {
 	if !m.preview.IsVisible() {
-		return m.terminalHeight - 5 // Full height minus header and help
+		listHeight := m.terminalHeight - 5 // Full height minus header and help
+		if listHeight < 1 {
+			listHeight = 1 // Ensure minimum height
+		}
+		return listHeight
 	}
 	
 	_, listHeight := calculatePreviewHeight(m.terminalHeight, m.preview.GetSplitRatio(), 10)
+	if listHeight < 1 {
+		listHeight = 1 // Ensure minimum height
+	}
 	return listHeight
+}
+
+// ensureCursorVisible ensures the cursor is within the visible range
+func (m *Model) ensureCursorVisible() {
+	if len(m.files) == 0 {
+		return
+	}
+	
+	// Ensure cursor is within bounds
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+	if m.cursor >= len(m.files) {
+		m.cursor = len(m.files) - 1
+	}
+	
+	// Ensure maxDisplayFiles is positive
+	if m.maxDisplayFiles <= 0 {
+		m.maxDisplayFiles = 1
+	}
+	
+	// Adjust scroll offset to keep cursor visible
+	if m.cursor < m.scrollOffset {
+		// Cursor is above visible range, scroll up
+		m.scrollOffset = m.cursor
+	} else if m.cursor >= m.scrollOffset+m.maxDisplayFiles {
+		// Cursor is below visible range, scroll down
+		m.scrollOffset = m.cursor - m.maxDisplayFiles + 1
+	}
+	
+	// Ensure scroll offset is within bounds
+	if m.scrollOffset < 0 {
+		m.scrollOffset = 0
+	}
+	maxScrollOffset := len(m.files) - m.maxDisplayFiles
+	if maxScrollOffset < 0 {
+		maxScrollOffset = 0
+	}
+	if m.scrollOffset > maxScrollOffset {
+		m.scrollOffset = maxScrollOffset
+	}
 }
 
 // updatePreviewContent updates the preview content based on current selection

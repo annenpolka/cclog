@@ -201,11 +201,33 @@ func calculatePreviewHeight(terminalHeight int, splitRatio float64, minHeight in
 	// Reserve space for header, borders, and help text
 	availableHeight := terminalHeight - 6
 	
-	if availableHeight < minHeight {
-		return minHeight, availableHeight - minHeight
+	// For very small screens, ensure minimum usable list height
+	minListHeight := 2
+	if availableHeight < minListHeight + minHeight {
+		// Prioritize list visibility on extremely small screens
+		listHeight := minListHeight
+		if availableHeight < minListHeight {
+			listHeight = availableHeight
+		}
+		previewHeight := availableHeight - listHeight
+		if previewHeight < 0 {
+			previewHeight = 0
+		}
+		return previewHeight, listHeight
 	}
 	
-	previewHeight := int(float64(availableHeight) * splitRatio)
+	// For small screens, use adaptive split ratio
+	adaptiveSplitRatio := splitRatio
+	if availableHeight < 15 {
+		// On small screens, give more space to the list
+		adaptiveSplitRatio = 0.6 // 60% preview, 40% list
+	}
+	if availableHeight < 10 {
+		// On very small screens, give even more space to the list
+		adaptiveSplitRatio = 0.5 // 50% preview, 50% list
+	}
+	
+	previewHeight := int(float64(availableHeight) * adaptiveSplitRatio)
 	
 	// Apply minimum height constraint
 	if previewHeight < minHeight {
@@ -213,6 +235,15 @@ func calculatePreviewHeight(terminalHeight int, splitRatio float64, minHeight in
 	}
 	
 	listHeight := availableHeight - previewHeight
+	
+	// Ensure list height is at least minimum usable
+	if listHeight < minListHeight {
+		listHeight = minListHeight
+		previewHeight = availableHeight - listHeight
+		if previewHeight < 0 {
+			previewHeight = 0
+		}
+	}
 	
 	return previewHeight, listHeight
 }

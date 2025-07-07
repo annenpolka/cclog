@@ -42,8 +42,8 @@ func TestCalculatePreviewHeight(t *testing.T) {
 			terminalHeight:   15,
 			splitRatio:       0.5,
 			minHeight:        10,
-			expectedHeight:   10, // Constrained to minHeight
-			expectedListHeight: -1, // Impossible layout, should be handled
+			expectedHeight:   7, // Adaptive split prioritizes list
+			expectedListHeight: 2, // Minimum list height ensured
 		},
 		{
 			name:             "30% preview split",
@@ -133,12 +133,12 @@ func TestPreviewModelDynamicHeight(t *testing.T) {
 		t.Errorf("SetDynamicHeight() height = %d, expected %d", height, 20)
 	}
 	
-	// Test minimum height constraint
+	// Test minimum height constraint on very small screen
 	preview.SetDynamicHeight(15, 0.5, 10)
 	
 	_, height = preview.GetSize()
-	if height != 10 { // Should be constrained to minHeight
-		t.Errorf("SetDynamicHeight() with minimum constraint height = %d, expected %d", height, 10)
+	if height != 7 { // Adaptive split gives more to list on small screens
+		t.Errorf("SetDynamicHeight() with minimum constraint height = %d, expected %d", height, 7)
 	}
 }
 

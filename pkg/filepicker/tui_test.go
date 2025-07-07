@@ -1,6 +1,7 @@
 package filepicker
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -186,6 +187,132 @@ func TestDirectoryColorStyling(t *testing.T) {
 			}
 			// Since we've implemented colorful styling, this test should pass
 			// The styling is applied internally via lipgloss
+		})
+	}
+}
+
+// TestSmallScreenScrolling tests scrolling behavior on small screens
+func TestSmallScreenScrolling(t *testing.T) {
+	tests := []struct {
+		name           string
+		terminalHeight int
+		fileCount      int
+		cursorPosition int
+		expectedVisible bool
+		description    string
+	}{
+		{
+			name:           "Small screen - cursor should be visible",
+			terminalHeight: 10,
+			fileCount:      20,
+			cursorPosition: 15,
+			expectedVisible: true,
+			description:    "小さい画面でカーソルが見切れないことを確認",
+		},
+		{
+			name:           "Very small screen - cursor should be visible",
+			terminalHeight: 6,
+			fileCount:      10,
+			cursorPosition: 5,
+			expectedVisible: true,
+			description:    "極小画面でカーソルが見切れないことを確認",
+		},
+		{
+			name:           "Tiny screen - cursor should be visible",
+			terminalHeight: 4,
+			fileCount:      5,
+			cursorPosition: 3,
+			expectedVisible: true,
+			description:    "最小画面でカーソルが見切れないことを確認",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewModel(".", false)
+			m.terminalHeight = tt.terminalHeight
+			m.terminalWidth = 80
+			
+			// Create test files
+			for i := 0; i < tt.fileCount; i++ {
+				m.files = append(m.files, FileInfo{
+					Path:  fmt.Sprintf("test%d.jsonl", i),
+					IsDir: false,
+				})
+			}
+			
+			// Set cursor position
+			m.cursor = tt.cursorPosition
+			
+			// Test that cursor is within visible range
+			listHeight := m.getListHeight()
+			if listHeight <= 0 {
+				t.Errorf("List height should be positive, got %d", listHeight)
+			}
+			
+			// Update maxDisplayFiles based on available space
+			if listHeight > 0 {
+				m.maxDisplayFiles = listHeight
+			}
+			
+			// Use the ensureCursorVisible method to test the actual implementation
+			m.ensureCursorVisible()
+			
+			// Check if cursor is within visible range
+			isVisible := m.cursor >= m.scrollOffset && m.cursor < m.scrollOffset+m.maxDisplayFiles
+			
+			if isVisible != tt.expectedVisible {
+				t.Errorf("Expected cursor visibility %v, got %v. Cursor: %d, ScrollOffset: %d, MaxDisplayFiles: %d, ListHeight: %d. %s", 
+					tt.expectedVisible, isVisible, m.cursor, m.scrollOffset, m.maxDisplayFiles, listHeight, tt.description)
+			}
+		})
+	}
+}
+
+// TestAdaptivePreviewSplit tests adaptive preview split ratio for small screens
+func TestAdaptivePreviewSplit(t *testing.T) {
+	tests := []struct {
+		name                string
+		terminalHeight      int
+		expectedListHeight  int
+		expectedMinimumList int
+		description         string
+	}{
+		{
+			name:                "Normal screen - 80/20 split",
+			terminalHeight:      30,
+			expectedListHeight:  4, // 24 * 0.2 = 4.8 -> 4
+			expectedMinimumList: 3,
+			description:         "通常画面では80/20分割を期待",
+		},
+		{
+			name:                "Small screen - adaptive split",
+			terminalHeight:      15,
+			expectedListHeight:  2, // Should ensure minimum list visibility
+			expectedMinimumList: 2,
+			description:         "小さい画面では適応的分割を期待",
+		},
+		{
+			name:                "Very small screen - minimum list",
+			terminalHeight:      8,
+			expectedListHeight:  2, // Should ensure minimum list visibility
+			expectedMinimumList: 2,
+			description:         "極小画面では最低限のリスト表示を期待",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewModel(".", false)
+			m.terminalHeight = tt.terminalHeight
+			m.preview.visible = true
+			
+			listHeight := m.getListHeight()
+			
+			if listHeight < tt.expectedMinimumList {
+				t.Errorf("List height %d should be at least %d for usability. %s", 
+					listHeight, tt.expectedMinimumList, tt.description)
+			}
 		})
 	}
 }
