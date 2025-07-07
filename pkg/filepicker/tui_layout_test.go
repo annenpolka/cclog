@@ -20,28 +20,28 @@ func TestModelUpdatePreviewSize(t *testing.T) {
 			name:             "Standard terminal size",
 			terminalWidth:    80,
 			terminalHeight:   40,
-			expectedPreviewWidth: 76, // 80 - 4
+			expectedPreviewWidth: 80, // Use full width
 			expectedPreviewHeight: 27, // (40 - 6) * 0.8 = 27.2 -> 27
 		},
 		{
 			name:             "Large terminal",
 			terminalWidth:    120,
 			terminalHeight:   60,
-			expectedPreviewWidth: 116, // 120 - 4
+			expectedPreviewWidth: 120, // Use full width
 			expectedPreviewHeight: 43, // (60 - 6) * 0.8 = 43.2 -> 43
 		},
 		{
 			name:             "Small terminal",
 			terminalWidth:    40,
 			terminalHeight:   20,
-			expectedPreviewWidth: 36, // 40 - 4
+			expectedPreviewWidth: 40, // Use full width
 			expectedPreviewHeight: 11, // (20 - 6) * 0.8 = 11.2 -> 11
 		},
 		{
 			name:             "Very small terminal",
 			terminalWidth:    10,
 			terminalHeight:   8,
-			expectedPreviewWidth: 6, // 10 - 4
+			expectedPreviewWidth: 10, // Use full width
 			expectedPreviewHeight: 10, // Minimum height constraint
 		},
 	}
@@ -143,7 +143,7 @@ func TestModelWindowSizeMessage(t *testing.T) {
 	
 	// Check if preview size was updated
 	width, height := m.preview.GetSize()
-	expectedWidth := 96 // 100 - 4
+	expectedWidth := 100 // Use full width
 	expectedHeight := 35 // (50 - 6) * 0.8 = 35.2 -> 35
 	
 	if width != expectedWidth {

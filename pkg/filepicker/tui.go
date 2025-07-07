@@ -582,7 +582,7 @@ func (m *Model) updatePreviewSize() {
 		return
 	}
 	
-	previewWidth := m.terminalWidth - 4 // Account for borders
+	previewWidth := m.terminalWidth // Use full terminal width
 	if previewWidth < 0 {
 		previewWidth = 0
 	}
