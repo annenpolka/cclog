@@ -1,5 +1,7 @@
 # cclog - Claude Conversation Log to Markdown Converter
 
+<img width="5316" height="3054" alt="Image" src="https://github.com/user-attachments/assets/ca0124ab-eb07-48c7-b4ec-5e0d19433e24" />
+
 A Go command-line tool that parses Claude conversation logs (JSONL format) and converts them to human-readable Markdown format.
 
 ## Features
