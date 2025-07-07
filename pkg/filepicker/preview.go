@@ -130,7 +130,7 @@ func (p *PreviewModel) View() string {
 	return p.markdownBubble.View()
 }
 
-func GeneratePreview(jsonlPath string) (string, error) {
+func GeneratePreview(jsonlPath string, enableFiltering bool) (string, error) {
 	if jsonlPath == "" {
 		return "", nil
 	}
@@ -141,8 +141,8 @@ func GeneratePreview(jsonlPath string) (string, error) {
 		return "", err
 	}
 	
-	// Apply filtering (remove system messages)
-	filteredLog := formatter.FilterConversationLog(log, true)
+	// Apply filtering based on enableFiltering parameter
+	filteredLog := formatter.FilterConversationLog(log, enableFiltering)
 	
 	// Convert to markdown
 	markdown := formatter.FormatConversationToMarkdownWithOptions(filteredLog, formatter.FormatOptions{ShowUUID: false})

@@ -27,6 +27,7 @@ type Model struct {
 	contentAlignment string
 	maxTitleChars   int
 	preview         *PreviewModel
+	enableFiltering bool
 }
 
 func NewModel(dir string, recursive bool) Model {
@@ -43,6 +44,7 @@ func NewModel(dir string, recursive bool) Model {
 		contentAlignment: "left", // Default alignment
 		maxTitleChars:    40, // Default title character limit
 		preview:          NewPreviewModel(),
+		enableFiltering:  true, // Default to filtering enabled
 	}
 }
 
@@ -79,6 +81,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Toggle preview
 			m.preview.SetVisible(!m.preview.IsVisible())
 			// Update preview content if visible
+			if m.preview.IsVisible() {
+				if cmd := m.updatePreviewContent(); cmd != nil {
+					cmds = append(cmds, cmd)
+				}
+			}
+			return m, tea.Batch(cmds...)
+		case "s":
+			// Toggle filtering
+			m.enableFiltering = !m.enableFiltering
+			// Update preview content with new filtering state
 			if m.preview.IsVisible() {
 				if cmd := m.updatePreviewContent(); cmd != nil {
 					cmds = append(cmds, cmd)
@@ -123,8 +135,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.scrollOffset = 0
 					return m, loadFiles(m.dir, m.recursive)
 				} else {
-					// Convert to markdown and open in editor
-					return m, convertAndOpenInEditor(selectedItem.Path)
+					// Convert to markdown and open in editor with current filtering state
+					return m, convertAndOpenInEditor(selectedItem.Path, m.enableFiltering)
 				}
 			}
 		}
@@ -153,6 +165,11 @@ func (m Model) View() string {
 	modeStr := ""
 	if m.recursive {
 		modeStr = " [RECURSIVE]"
+	}
+	if m.enableFiltering {
+		modeStr += " [FILTERED]"
+	} else {
+		modeStr += " [UNFILTERED]"
 	}
 	
 	// Truncate directory path for narrow terminals
@@ -236,6 +253,7 @@ func (m Model) View() string {
 		s.WriteString("  ↑/↓, j/k: Navigate\n")
 		s.WriteString("  Enter: Open folder / Open file in editor\n")
 		s.WriteString("  p: Toggle preview\n")
+		s.WriteString("  s: Toggle filter\n")
 		if m.preview.IsVisible() {
 			s.WriteString("  d/u: Scroll preview down/up\n")
 		}
@@ -243,16 +261,16 @@ func (m Model) View() string {
 	} else if m.terminalWidth < 40 {
 		// Very narrow: minimal help
 		if m.preview.IsVisible() {
-			s.WriteString("\nj/k:Nav d/u:Scroll p:Preview q:Quit")
+			s.WriteString("\nj/k:Nav d/u:Scroll p:Preview s:Filter q:Quit")
 		} else {
-			s.WriteString("\nj/k:Nav Enter:Open p:Preview q:Quit")
+			s.WriteString("\nj/k:Nav Enter:Open p:Preview s:Filter q:Quit")
 		}
 	} else {
 		// Compact: abbreviated help
 		if m.preview.IsVisible() {
-			s.WriteString("\nNav:↑↓/jk Open:Enter Preview:p Scroll:d/u Quit:q")
+			s.WriteString("\nNav:↑↓/jk Open:Enter Preview:p Filter:s Scroll:d/u Quit:q")
 		} else {
-			s.WriteString("\nNav:↑↓/jk Open:Enter Preview:p Quit:q")
+			s.WriteString("\nNav:↑↓/jk Open:Enter Preview:p Filter:s Quit:q")
 		}
 	}
 	
@@ -322,10 +340,10 @@ func getEditorCommand(filepath string) *exec.Cmd {
 }
 
 // convertAndOpenInEditor converts JSONL file to markdown and opens it in editor
-func convertAndOpenInEditor(jsonlPath string) tea.Cmd {
+func convertAndOpenInEditor(jsonlPath string, enableFiltering bool) tea.Cmd {
 	return func() tea.Msg {
 		// Convert JSONL to markdown
-		markdownContent, err := convertJSONLToMarkdown(jsonlPath)
+		markdownContent, err := convertJSONLToMarkdown(jsonlPath, enableFiltering)
 		if err != nil {
 			// If conversion fails, fall back to opening original file
 			return openInEditor(jsonlPath)()
@@ -352,15 +370,15 @@ func convertAndOpenInEditor(jsonlPath string) tea.Cmd {
 }
 
 // convertJSONLToMarkdown converts a JSONL file to markdown format
-func convertJSONLToMarkdown(jsonlPath string) (string, error) {
+func convertJSONLToMarkdown(jsonlPath string, enableFiltering bool) (string, error) {
 	// Parse JSONL file
 	log, err := parser.ParseJSONLFile(jsonlPath)
 	if err != nil {
 		return "", err
 	}
 	
-	// Apply filtering (remove system messages)
-	filteredLog := formatter.FilterConversationLog(log, true)
+	// Apply filtering based on enableFiltering parameter
+	filteredLog := formatter.FilterConversationLog(log, enableFiltering)
 	
 	// Convert to markdown
 	markdown := formatter.FormatConversationToMarkdownWithOptions(filteredLog, formatter.FormatOptions{ShowUUID: false})
@@ -524,7 +542,7 @@ func (m *Model) updatePreviewContent() tea.Cmd {
 	
 	// Generate preview for JSONL files
 	if strings.HasSuffix(selectedFile.Path, ".jsonl") {
-		content, err := GeneratePreview(selectedFile.Path)
+		content, err := GeneratePreview(selectedFile.Path, m.enableFiltering)
 		if err != nil {
 			return m.preview.SetContent("Error generating preview: " + err.Error())
 		} else {

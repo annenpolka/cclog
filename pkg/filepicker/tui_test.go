@@ -1237,3 +1237,115 @@ func TestModel_PreviewWithDirectorySelection(t *testing.T) {
 		t.Error("Preview content should be empty for directories")
 	}
 }
+
+// TDD Red Phase: Tests for filtering toggle functionality
+
+func TestModel_EnableFilteringField(t *testing.T) {
+	// Red: This test should fail because enableFiltering field doesn't exist yet
+	model := NewModel(".", false)
+	
+	// Model should have enableFiltering field with default value true
+	if !model.enableFiltering {
+		t.Error("Model should have enableFiltering field with default value true")
+	}
+}
+
+func TestModel_FilteringToggleWithSKey(t *testing.T) {
+	// Red: This test should fail because 's' key handling doesn't exist yet
+	model := NewModel(".", false)
+	
+	// Initial state should be filtering enabled
+	if !model.enableFiltering {
+		t.Error("Initial filtering state should be enabled")
+	}
+	
+	// Press 's' key to toggle filtering
+	keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+	updatedModel, _ := model.Update(keyMsg)
+	m := updatedModel.(Model)
+	
+	// Filtering should be toggled to disabled
+	if m.enableFiltering {
+		t.Error("Filtering should be disabled after pressing 's' key")
+	}
+	
+	// Press 's' key again to toggle back
+	updatedModel2, _ := m.Update(keyMsg)
+	m2 := updatedModel2.(Model)
+	
+	// Filtering should be enabled again
+	if !m2.enableFiltering {
+		t.Error("Filtering should be enabled again after pressing 's' key twice")
+	}
+}
+
+func TestModel_FilteringStateDisplay(t *testing.T) {
+	// Red: This test should fail because filtering state display doesn't exist yet
+	model := NewModel(".", false)
+	
+	// Test filtering enabled state display
+	model.enableFiltering = true
+	view := model.View()
+	if !strings.Contains(view, "[FILTERED]") {
+		t.Error("View should contain '[FILTERED]' when filtering is enabled")
+	}
+	
+	// Test filtering disabled state display
+	model.enableFiltering = false
+	view = model.View()
+	if !strings.Contains(view, "[UNFILTERED]") {
+		t.Error("View should contain '[UNFILTERED]' when filtering is disabled")
+	}
+}
+
+func TestModel_FilteringToggleHelpText(t *testing.T) {
+	// Red: This test should fail because help text doesn't include 's' key yet
+	model := NewModel(".", false)
+	view := model.View()
+	
+	// Help text should include 's' key for toggling filter
+	if !strings.Contains(view, "s:") || !strings.Contains(view, "filter") {
+		t.Error("Help text should include 's' key for toggling filter")
+	}
+}
+
+func TestModel_FilteringStateAffectsPreview(t *testing.T) {
+	// Red: This test should fail because preview doesn't use enableFiltering yet
+	tempDir := t.TempDir()
+	
+	// Create test file with filterable content
+	testFile := filepath.Join(tempDir, "test.jsonl")
+	filteredContent := `{"type":"system","message":{"role":"system","content":"System message"},"uuid":"system-uuid","timestamp":"2025-07-06T05:00:00.000Z"}
+{"type":"user","message":{"role":"user","content":"Normal user message"},"uuid":"user-uuid","timestamp":"2025-07-06T05:00:01.000Z"}`
+	
+	if err := os.WriteFile(testFile, []byte(filteredContent), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	
+	model := NewModel(tempDir, false)
+	model.files = []FileInfo{
+		{
+			Name: "test.jsonl",
+			Path: testFile,
+			ConversationTitle: "Test conversation",
+		},
+	}
+	model.cursor = 0
+	
+	// Test with filtering enabled (should filter out system messages)
+	model.enableFiltering = true
+	updatedModel, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	m1 := updatedModel.(Model)
+	previewContent1 := m1.preview.GetContent()
+	
+	// Test with filtering disabled (should include all messages)
+	model.enableFiltering = false
+	updatedModel2, _ := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	m2 := updatedModel2.(Model)
+	previewContent2 := m2.preview.GetContent()
+	
+	// Content should be different based on filtering state
+	if previewContent1 == previewContent2 {
+		t.Error("Preview content should differ based on filtering state")
+	}
+}

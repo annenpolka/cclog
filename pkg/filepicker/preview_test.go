@@ -128,7 +128,7 @@ func TestGeneratePreview(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			content, err := GeneratePreview(tt.jsonlPath)
+			content, err := GeneratePreview(tt.jsonlPath, true)
 			
 			if tt.shouldError && err == nil {
 				t.Errorf("GeneratePreview(%s) expected error but got none", tt.jsonlPath)
