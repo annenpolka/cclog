@@ -7,10 +7,18 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/term"
 	"github.com/annenpolka/cclog/internal/formatter"
 	"github.com/annenpolka/cclog/internal/parser"
 	"github.com/annenpolka/cclog/pkg/types"
+)
+
+// Define styles for help text
+var (
+	helpKeyStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "241", Dark: "241"})
+	helpDescStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "239", Dark: "239"})
+	helpSeparatorStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "237", Dark: "237"})
 )
 
 type Model struct {
@@ -250,27 +258,90 @@ func (m Model) View() string {
 	if !m.useCompactLayout {
 		s.WriteString("\n")
 		if m.preview.IsVisible() {
-			s.WriteString("↑↓/jk:move enter:open p:preview s:filter d/u:scroll g/G:top/bot q:quit")
+			s.WriteString(renderHelp([]helpItem{
+				{keys: "↑↓/jk", desc: "move"},
+				{keys: "enter", desc: "open"},
+				{keys: "p", desc: "preview"},
+				{keys: "s", desc: "filter"},
+				{keys: "d/u", desc: "scroll"},
+				{keys: "g/G", desc: "top/bot"},
+				{keys: "q", desc: "quit"},
+			}))
 		} else {
-			s.WriteString("↑↓/jk:move enter:open p:preview s:filter q:quit")
+			s.WriteString(renderHelp([]helpItem{
+				{keys: "↑↓/jk", desc: "move"},
+				{keys: "enter", desc: "open"},
+				{keys: "p", desc: "preview"},
+				{keys: "s", desc: "filter"},
+				{keys: "q", desc: "quit"},
+			}))
 		}
 	} else if m.terminalWidth < 40 {
 		// Very narrow: minimal help
 		if m.preview.IsVisible() {
-			s.WriteString("\njk:move du:scroll gG:top/bot p:preview s:filter q:quit")
+			s.WriteString("\n")
+			s.WriteString(renderHelp([]helpItem{
+				{keys: "jk", desc: "move"},
+				{keys: "du", desc: "scroll"},
+				{keys: "gG", desc: "top/bot"},
+				{keys: "p", desc: "preview"},
+				{keys: "s", desc: "filter"},
+				{keys: "q", desc: "quit"},
+			}))
 		} else {
-			s.WriteString("\njk:move enter:open p:preview s:filter q:quit")
+			s.WriteString("\n")
+			s.WriteString(renderHelp([]helpItem{
+				{keys: "jk", desc: "move"},
+				{keys: "enter", desc: "open"},
+				{keys: "p", desc: "preview"},
+				{keys: "s", desc: "filter"},
+				{keys: "q", desc: "quit"},
+			}))
 		}
 	} else {
 		// Compact: abbreviated help
 		if m.preview.IsVisible() {
-			s.WriteString("\n↑↓/jk:move enter:open p:preview s:filter d/u:scroll g/G:top/bot q:quit")
+			s.WriteString("\n")
+			s.WriteString(renderHelp([]helpItem{
+				{keys: "↑↓/jk", desc: "move"},
+				{keys: "enter", desc: "open"},
+				{keys: "p", desc: "preview"},
+				{keys: "s", desc: "filter"},
+				{keys: "d/u", desc: "scroll"},
+				{keys: "g/G", desc: "top/bot"},
+				{keys: "q", desc: "quit"},
+			}))
 		} else {
-			s.WriteString("\n↑↓/jk:move enter:open p:preview s:filter q:quit")
+			s.WriteString("\n")
+			s.WriteString(renderHelp([]helpItem{
+				{keys: "↑↓/jk", desc: "move"},
+				{keys: "enter", desc: "open"},
+				{keys: "p", desc: "preview"},
+				{keys: "s", desc: "filter"},
+				{keys: "q", desc: "quit"},
+			}))
 		}
 	}
 	
 	return s.String()
+}
+
+// helpItem represents a help text item with keys and description
+type helpItem struct {
+	keys string
+	desc string
+}
+
+// renderHelp renders the help text with styling
+func renderHelp(items []helpItem) string {
+	var parts []string
+	for i, item := range items {
+		if i > 0 {
+			parts = append(parts, helpSeparatorStyle.Render(" "))
+		}
+		parts = append(parts, helpKeyStyle.Render(item.keys)+helpSeparatorStyle.Render(":")+helpDescStyle.Render(item.desc))
+	}
+	return strings.Join(parts, "")
 }
 
 // GetSelectedFile returns the path of the selected file, or empty string if none selected

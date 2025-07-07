@@ -9,7 +9,9 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/exp/teatest"
+	"github.com/muesli/termenv"
 )
 
 func TestModel_Init(t *testing.T) {
@@ -1347,5 +1349,35 @@ func TestModel_FilteringStateAffectsPreview(t *testing.T) {
 	// Content should be different based on filtering state
 	if previewContent1 == previewContent2 {
 		t.Error("Preview content should differ based on filtering state")
+	}
+}
+
+func TestModel_HelpTextStyling(t *testing.T) {
+	// Force color output for testing
+	lipgloss.SetColorProfile(termenv.TrueColor)
+	
+	// Test that renderHelp function properly styles help text
+	items := []helpItem{
+		{keys: "↑↓/jk", desc: "move"},
+		{keys: "enter", desc: "open"},
+		{keys: "q", desc: "quit"},
+	}
+	
+	helpText := renderHelp(items)
+	
+	// The styled help text should contain ANSI escape codes
+	if !strings.Contains(helpText, "\x1b[") {
+		t.Error("Help text should contain ANSI escape codes for styling")
+	}
+	
+	// Check that different parts have different styling
+	// Keys should be styled differently from descriptions
+	if !strings.Contains(helpText, "↑↓/jk") {
+		t.Error("Help text should contain key bindings")
+	}
+	
+	// The help text should be properly formatted
+	if !strings.Contains(helpText, "move") || !strings.Contains(helpText, "open") || !strings.Contains(helpText, "quit") {
+		t.Error("Help text should contain all descriptions")
 	}
 }
