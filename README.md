@@ -10,7 +10,10 @@ A Go command-line tool that parses Claude conversation logs (JSONL format) and c
 ## Installation
 
 ```bash
-# Build from source
+# Install latest version from GitHub
+go install github.com/annenpolka/cclog/cmd/cclog@latest
+
+# Or build from source
 go build -o cclog ./cmd/cclog/
 
 # Run directly with Go
