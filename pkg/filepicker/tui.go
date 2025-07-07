@@ -44,7 +44,7 @@ func NewModel(dir string, recursive bool) Model {
 		files:            []FileInfo{},
 		cursor:           0,
 		recursive:        recursive,
-		maxDisplayFiles:  20, // Default limit
+		maxDisplayFiles:  10, // Default limit
 		scrollOffset:     0,
 		terminalWidth:    80, // Default terminal width
 		terminalHeight:   24, // Default terminal height
