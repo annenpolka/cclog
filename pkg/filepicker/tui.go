@@ -14,11 +14,45 @@ import (
 	"github.com/annenpolka/cclog/pkg/types"
 )
 
-// Define styles for help text
+// Define styles for help text and UI elements
 var (
 	helpKeyStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "241", Dark: "241"})
 	helpDescStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "239", Dark: "239"})
 	helpSeparatorStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "237", Dark: "237"})
+	
+	// File selection and highlighting styles
+	selectedFileStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("15")).  // Bright white text
+		Background(lipgloss.Color("33")).  // Bright blue background
+		Bold(true).
+		Padding(0, 1) // Horizontal padding for better visibility
+	
+	// File type specific styles
+	normalFileStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "250"}) // Adaptive gray
+	
+	directoryStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("39")).  // Bright blue for directories
+		Bold(true)
+	
+	jsonlFileStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("148")) // Green for JSONL files
+	
+	// UI element styles
+	cursorStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("196")).  // Bright red cursor
+		Bold(true)
+	
+	headerStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("39")).  // Blue header text
+		Bold(true)
+	
+	modeStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("226")).  // Yellow mode indicators
+		Bold(true)
+	
+	scrollIndicatorStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240"))  // Subtle gray for scroll hints
 )
 
 type Model struct {
@@ -169,27 +203,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var s strings.Builder
 	
-	// Show current directory with mode indicator
+	// Show current directory with mode indicator using colorful styles
 	modeStr := ""
 	if m.recursive {
-		modeStr = " [RECURSIVE]"
+		modeStr = " " + modeStyle.Render("[RECURSIVE]")
 	}
 	if m.enableFiltering {
-		modeStr += " [FILTERED]"
+		modeStr += " " + modeStyle.Render("[FILTERED]")
 	} else {
-		modeStr += " [UNFILTERED]"
+		modeStr += " " + modeStyle.Render("[UNFILTERED]")
 	}
 	
 	// Truncate directory path for narrow terminals
-	dirPath := m.dir + modeStr
-	if m.terminalWidth > 0 && len(dirPath) > m.terminalWidth-4 { // Reserve space for emoji and spaces
-		availableWidth := m.terminalWidth - 7 // "📁 " + "..."
+	dirPath := m.dir
+	if m.terminalWidth > 0 && len(dirPath) > m.terminalWidth-20 { // Reserve space for emoji, modes, and spaces
+		availableWidth := m.terminalWidth - 20 // "📁 " + modes + "..."
 		if availableWidth > 0 {
 			dirPath = types.TruncateTitleWithWidth(dirPath, availableWidth)
 		}
 	}
 	
-	s.WriteString("📁 " + dirPath + "\n\n")
+	s.WriteString("📁 " + headerStyle.Render(dirPath) + modeStr + "\n\n")
 	
 	// Calculate available space for file list using dynamic layout
 	listHeight := m.getListHeight()
@@ -214,12 +248,12 @@ func (m Model) View() string {
 		// Removed "more above" display
 	}
 	
-	// Show files list with scrolling
+	// Show files list with scrolling and colorful styling
 	for i := displayStart; i < displayEnd; i++ {
 		file := m.files[i]
 		cursor := " "
 		if i == m.cursor {
-			cursor = ">"
+			cursor = cursorStyle.Render(">")
 		}
 		
 		// Get base title and apply responsive formatting
@@ -229,16 +263,20 @@ func (m Model) View() string {
 		prefixWidth := 3 // cursor + spaces
 		availableWidth := m.terminalWidth - prefixWidth
 		
+		// Truncate title first, then apply colorful styling
+		truncatedTitle := types.TruncateTitleWithWidth(title, m.maxTitleChars)
+		styledTitle := m.getStyledTitle(truncatedTitle, file.IsDir, i == m.cursor)
+		
 		// Create responsive content line
-		displayLine := m.formatResponsiveLine(cursor, title, availableWidth)
+		displayLine := m.formatResponsiveColorLine(cursor, styledTitle, availableWidth)
 		s.WriteString(displayLine + "\n")
 	}
 	
-	// Show bottom scroll indicator
+	// Show bottom scroll indicator with styling
 	if totalFiles > m.maxDisplayFiles {
 		remainingBelow := totalFiles - displayEnd
 		if remainingBelow > 0 {
-			s.WriteString("↓ " + strconv.Itoa(remainingBelow) + " more below\n")
+			s.WriteString(scrollIndicatorStyle.Render("↓ " + strconv.Itoa(remainingBelow) + " more below") + "\n")
 		}
 	}
 	
@@ -571,6 +609,39 @@ func (m Model) formatResponsiveLine(cursor, title string, availableWidth int) st
 	if len(finalRunes) > m.terminalWidth && m.terminalWidth > 0 {
 		line = string(finalRunes[:m.terminalWidth])
 	}
+	
+	return line
+}
+
+// getStyledTitle applies colorful styling to title based on file type and selection
+func (m Model) getStyledTitle(title string, isDir bool, isSelected bool) string {
+	switch {
+	case isSelected:
+		// Selected item gets highlight background with high visibility
+		return selectedFileStyle.Render(title)
+	case isDir:
+		// Directory gets distinctive blue color and bold formatting
+		return directoryStyle.Render(title)
+	case strings.HasSuffix(title, ".jsonl"):
+		// JSONL files get green color for easy identification
+		return jsonlFileStyle.Render(title)
+	default:
+		// Regular files get subtle normal color
+		return normalFileStyle.Render(title)
+	}
+}
+
+// formatResponsiveColorLine creates a responsive content line with colorful styling
+func (m Model) formatResponsiveColorLine(cursor, styledTitle string, availableWidth int) string {
+	if availableWidth <= 0 {
+		return cursor + " " + styledTitle
+	}
+	
+	// Create the display line
+	line := cursor + " " + styledTitle
+	
+	// Note: We don't apply additional truncation here as the styling is already applied
+	// The truncation should happen before styling in the caller
 	
 	return line
 }
