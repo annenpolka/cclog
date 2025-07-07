@@ -249,29 +249,24 @@ func (m Model) View() string {
 	// Show help text based on layout
 	if !m.useCompactLayout {
 		s.WriteString("\n")
-		s.WriteString("Controls:\n")
-		s.WriteString("  ↑/↓, j/k: Navigate\n")
-		s.WriteString("  Enter: Open folder / Open file in editor\n")
-		s.WriteString("  p: Toggle preview\n")
-		s.WriteString("  s: Toggle filter\n")
 		if m.preview.IsVisible() {
-			s.WriteString("  d/u: Scroll preview down/up\n")
-			s.WriteString("  g/G: Go to top/bottom of preview\n")
+			s.WriteString("↑↓/jk:move enter:open p:preview s:filter d/u:scroll g/G:top/bot q:quit")
+		} else {
+			s.WriteString("↑↓/jk:move enter:open p:preview s:filter q:quit")
 		}
-		s.WriteString("  q: Quit\n")
 	} else if m.terminalWidth < 40 {
 		// Very narrow: minimal help
 		if m.preview.IsVisible() {
-			s.WriteString("\nj/k:Nav d/u:Scroll g/G:Top/Bot p:Preview s:Filter q:Quit")
+			s.WriteString("\njk:move du:scroll gG:top/bot p:preview s:filter q:quit")
 		} else {
-			s.WriteString("\nj/k:Nav Enter:Open p:Preview s:Filter q:Quit")
+			s.WriteString("\njk:move enter:open p:preview s:filter q:quit")
 		}
 	} else {
 		// Compact: abbreviated help
 		if m.preview.IsVisible() {
-			s.WriteString("\nNav:↑↓/jk Open:Enter Preview:p Filter:s Scroll:d/u g/G:Top/Bot Quit:q")
+			s.WriteString("\n↑↓/jk:move enter:open p:preview s:filter d/u:scroll g/G:top/bot q:quit")
 		} else {
-			s.WriteString("\nNav:↑↓/jk Open:Enter Preview:p Filter:s Quit:q")
+			s.WriteString("\n↑↓/jk:move enter:open p:preview s:filter q:quit")
 		}
 	}
 	

@@ -862,7 +862,7 @@ func TestModel_WidthBasedLayoutAdjustments(t *testing.T) {
 	}
 	
 	// Should show help text in full mode
-	if !strings.Contains(view, "Controls:") {
+	if !strings.Contains(view, "↑↓/jk:move") {
 		t.Error("Should show help text in full layout")
 	}
 }
