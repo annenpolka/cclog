@@ -87,7 +87,7 @@ cclog -r /path/to/logs
 
 The tool converts Claude conversation logs into clean Markdown format with:
 
-- **Timestamps**: Converted to JST timezone for readability
+- **Timestamps**: Automatically converted to system timezone for readability
 - **Message Filtering**: Removes system messages, API errors, and interrupted requests
 - **Content Extraction**: Handles both simple and complex message structures
 - **Readable Format**: Well-structured Markdown with proper formatting

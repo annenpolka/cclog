@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/annenpolka/cclog/pkg/types"
 )
@@ -117,9 +116,9 @@ func formatMessageWithOptions(msg types.Message, options FormatOptions) string {
 		sb.WriteString(fmt.Sprintf("### %s\n\n", strings.Title(msg.Type)))
 	}
 
-	// Add timestamp
-	jstTime := msg.Timestamp.In(time.FixedZone("JST", 9*60*60))
-	sb.WriteString(fmt.Sprintf("**Time:** %s\n\n", jstTime.Format("2006-01-02 15:04:05")))
+	// Add timestamp using system timezone
+	localTime := msg.Timestamp.In(GetSystemTimezone())
+	sb.WriteString(fmt.Sprintf("**Time:** %s\n\n", localTime.Format("2006-01-02 15:04:05")))
 
 	// Extract and format message content
 	content := extractMessageContentWithPlaceholders(msg.Message, options.ShowPlaceholders)
