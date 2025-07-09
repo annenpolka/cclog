@@ -157,20 +157,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tea.Batch(cmds...)
 		case "r":
-			// Resume with normal command
+			// Resume with normal command (with CWD directory change)
 			if len(m.files) > 0 {
 				selectedItem := m.files[m.cursor]
 				if !selectedItem.IsDir {
-					return m, executeResumeCommand(selectedItem.Path, false)
+					return m, executeResumeCommandWithCWDChange(selectedItem.Path, false)
 				}
 			}
 			return m, tea.Batch(cmds...)
 		case "R":
-			// Resume with dangerous permissions skip
+			// Resume with dangerous permissions skip (with CWD directory change)
 			if len(m.files) > 0 {
 				selectedItem := m.files[m.cursor]
 				if !selectedItem.IsDir {
-					return m, executeResumeCommand(selectedItem.Path, true)
+					return m, executeResumeCommandWithCWDChange(selectedItem.Path, true)
 				}
 			}
 			return m, tea.Batch(cmds...)
