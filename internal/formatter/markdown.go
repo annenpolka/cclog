@@ -66,7 +66,7 @@ func FormatMultipleConversationsToMarkdownWithOptions(logs []*types.Conversation
 	sb.WriteString("## Table of Contents\n\n")
 	for i, log := range logs {
 		filename := filepath.Base(log.FilePath)
-		sb.WriteString(fmt.Sprintf("%d. [%s](#%s)\n", i+1, filename, 
+		sb.WriteString(fmt.Sprintf("%d. [%s](#%s)\n", i+1, filename,
 			strings.ToLower(strings.ReplaceAll(filename, ".", ""))))
 	}
 	sb.WriteString("\n")
@@ -75,7 +75,7 @@ func FormatMultipleConversationsToMarkdownWithOptions(logs []*types.Conversation
 	for _, log := range logs {
 		filename := filepath.Base(log.FilePath)
 		sb.WriteString(fmt.Sprintf("## %s\n\n", filename))
-		
+
 		// Sort messages by timestamp
 		messages := make([]types.Message, len(log.Messages))
 		copy(messages, log.Messages)
@@ -173,7 +173,7 @@ func extractMessageContentWithPlaceholders(message interface{}, showPlaceholders
 		var hasToolResult bool
 		var toolNames []string
 		var toolOperations []string
-		
+
 		for _, item := range contentArray {
 			if itemMap, ok := item.(map[string]interface{}); ok {
 				if itemType, exists := itemMap["type"]; exists {
@@ -202,7 +202,7 @@ func extractMessageContentWithPlaceholders(message interface{}, showPlaceholders
 				}
 			}
 		}
-		
+
 		result := strings.Join(parts, "\n")
 		if showPlaceholders {
 			if result == "" && (hasToolUse || hasToolResult) {
@@ -270,7 +270,7 @@ func generatePlaceholderForToolOperation(msgMap map[string]interface{}, hasToolU
 		}
 		return fmt.Sprintf("*[Tools used: %s (no output)]*", strings.Join(toolNames, ", "))
 	}
-	
+
 	if hasToolResult {
 		// Check for tool use result metadata
 		if toolUseResult, exists := msgMap["toolUseResult"]; exists {
@@ -280,7 +280,7 @@ func generatePlaceholderForToolOperation(msgMap map[string]interface{}, hasToolU
 		}
 		return "*[Tool operation completed (no output)]*"
 	}
-	
+
 	return "*[Empty message content]*"
 }
 
@@ -314,7 +314,7 @@ func generatePlaceholderForToolUseResult(turMap map[string]interface{}) string {
 			}
 		}
 	}
-	
+
 	// Check for command execution results
 	if stdout, hasStdout := turMap["stdout"]; hasStdout {
 		if stderr, hasStderr := turMap["stderr"]; hasStderr {
@@ -327,13 +327,13 @@ func generatePlaceholderForToolUseResult(turMap map[string]interface{}) string {
 			}
 		}
 	}
-	
+
 	// Check for interrupted status
 	if interrupted, exists := turMap["interrupted"]; exists {
 		if interruptedBool, ok := interrupted.(bool); ok && interruptedBool {
 			return "*[Tool operation interrupted]*"
 		}
 	}
-	
+
 	return "*[Tool operation completed (no output)]*"
 }

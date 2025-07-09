@@ -131,7 +131,7 @@ func TestFormatConversationToMarkdown(t *testing.T) {
 	if !strings.Contains(markdown, "2025-07-06") {
 		t.Error("Markdown should contain formatted date")
 	}
-	
+
 	// Check that timestamp format is correct (HH:MM:SS format)
 	if !strings.Contains(markdown, "**Time:**") {
 		t.Error("Markdown should contain timestamp label")
@@ -241,11 +241,11 @@ func TestExtractMessageContent(t *testing.T) {
 
 func TestExtractMessageContentWithPlaceholders(t *testing.T) {
 	tests := []struct {
-		name              string
-		message           interface{}
-		showPlaceholders  bool
-		expectedWithout   string
-		expectedWith      string
+		name             string
+		message          interface{}
+		showPlaceholders bool
+		expectedWithout  string
+		expectedWith     string
 	}{
 		{
 			name: "meta message with isMeta flag",

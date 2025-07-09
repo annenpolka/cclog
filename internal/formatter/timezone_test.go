@@ -25,7 +25,7 @@ func TestGetSystemTimezoneWithEnvironmentVariable(t *testing.T) {
 	// Note: This test demonstrates that time.Local behavior can be affected by TZ environment variable
 	// However, in practice, the Go runtime may not always pick up TZ changes during test execution
 	// This test is more about documenting expected behavior rather than testing implementation
-	
+
 	// Save original TZ
 	originalTZ := os.Getenv("TZ")
 	defer func() {
@@ -67,7 +67,7 @@ func TestGetSystemTimezoneWithEnvironmentVariable(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			utcTime := time.Date(2025, 7, 6, tc.utcHour, 0, 0, 0, time.UTC)
 			localTime := utcTime.In(tc.location)
-			
+
 			if localTime.Hour() != tc.expected {
 				t.Errorf("%s: expected %d:00, got %d:00", tc.name, tc.expected, localTime.Hour())
 			}
@@ -78,12 +78,12 @@ func TestGetSystemTimezoneWithEnvironmentVariable(t *testing.T) {
 func TestGetSystemTimezoneDefaultBehavior(t *testing.T) {
 	// Test that the function returns time.Local behavior
 	tz := GetSystemTimezone()
-	
+
 	// Compare with time.Local
 	now := time.Now()
 	ourTime := now.In(tz)
 	localTime := now.In(time.Local)
-	
+
 	// They should be the same
 	if ourTime.Format(time.RFC3339) != localTime.Format(time.RFC3339) {
 		t.Errorf("GetSystemTimezone() result should match time.Local behavior")

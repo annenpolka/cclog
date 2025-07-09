@@ -85,7 +85,7 @@ func extractTitleFromUserMessage(msg Message) string {
 			if title, ok := content.(string); ok {
 				return title
 			}
-			
+
 			// Handle array content
 			if contentArray, ok := content.([]interface{}); ok {
 				return extractTitleFromArrayContent(contentArray)
@@ -118,7 +118,7 @@ func extractTitleFromArrayContent(contentArray []interface{}) string {
 					}
 				}
 			}
-			
+
 			// Handle tool_result type blocks
 			if itemType, exists := itemMap["type"]; exists {
 				if itemType == "tool_result" {

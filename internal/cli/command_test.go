@@ -18,8 +18,8 @@ func TestParseArgs(t *testing.T) {
 			name: "single file input",
 			args: []string{"cclog", "/path/to/file.jsonl"},
 			expected: Config{
-				InputPath:  "/path/to/file.jsonl",
-				OutputPath: "",
+				InputPath:   "/path/to/file.jsonl",
+				OutputPath:  "",
 				IsDirectory: false,
 			},
 			wantErr: false,
@@ -28,8 +28,8 @@ func TestParseArgs(t *testing.T) {
 			name: "directory input",
 			args: []string{"cclog", "-d", "/path/to/dir"},
 			expected: Config{
-				InputPath:  "/path/to/dir",
-				OutputPath: "",
+				InputPath:   "/path/to/dir",
+				OutputPath:  "",
 				IsDirectory: true,
 			},
 			wantErr: false,
@@ -38,8 +38,8 @@ func TestParseArgs(t *testing.T) {
 			name: "file with output",
 			args: []string{"cclog", "/path/to/file.jsonl", "-o", "output.md"},
 			expected: Config{
-				InputPath:  "/path/to/file.jsonl",
-				OutputPath: "output.md",
+				InputPath:   "/path/to/file.jsonl",
+				OutputPath:  "output.md",
 				IsDirectory: false,
 			},
 			wantErr: false,
@@ -48,7 +48,7 @@ func TestParseArgs(t *testing.T) {
 			name: "no arguments - should enable TUI mode and recursive mode by default",
 			args: []string{"cclog"},
 			expected: Config{
-				TUIMode: true,
+				TUIMode:   true,
 				Recursive: true,
 			},
 			wantErr: false,
@@ -147,21 +147,21 @@ func TestParseArgs(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "path option without value should return error",
-			args: []string{"cclog", "--path"},
+			name:     "path option without value should return error",
+			args:     []string{"cclog", "--path"},
 			expected: Config{},
-			wantErr: true,
+			wantErr:  true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			config, err := ParseArgs(tt.args)
-			
+
 			if tt.wantErr && err == nil {
 				t.Error("Expected error but got none")
 			}
-			
+
 			if !tt.wantErr && err != nil {
 				t.Errorf("Unexpected error: %v", err)
 			}
@@ -199,10 +199,10 @@ func TestRunCommand(t *testing.T) {
 	// Create a temporary test file
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "test.jsonl")
-	
+
 	testContent := `{"type":"user","message":{"role":"user","content":"test"},"timestamp":"2025-07-06T05:01:29.618Z","uuid":"test-uuid"}
 {"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"response"}]},"timestamp":"2025-07-06T05:01:30.618Z","uuid":"test-uuid-2"}`
-	
+
 	err := os.WriteFile(testFile, []byte(testContent), 0644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
@@ -237,9 +237,9 @@ func TestRunCommandWithDirectory(t *testing.T) {
 	tempDir := t.TempDir()
 	testFile1 := filepath.Join(tempDir, "test1.jsonl")
 	testFile2 := filepath.Join(tempDir, "test2.jsonl")
-	
+
 	testContent := `{"type":"user","message":{"role":"user","content":"test1"},"timestamp":"2025-07-06T05:01:29.618Z","uuid":"test-uuid"}`
-	
+
 	err := os.WriteFile(testFile1, []byte(testContent), 0644)
 	if err != nil {
 		t.Fatalf("Failed to create test file 1: %v", err)
@@ -277,12 +277,15 @@ func TestRunCommandWithDirectory(t *testing.T) {
 
 func TestGetDefaultTUIDirectory(t *testing.T) {
 	defaultDir := getDefaultTUIDirectory()
-	
-	// Should contain .claude/projects
-	if !strings.Contains(defaultDir, ".claude/projects") {
-		t.Errorf("Default directory should contain '.claude/projects', got: %s", defaultDir)
+
+	// Should contain either .claude/projects or .config/claude/projects
+	hasClaudeProjects := strings.Contains(defaultDir, ".claude/projects")
+	hasConfigClaudeProjects := strings.Contains(defaultDir, ".config/claude/projects")
+
+	if !hasClaudeProjects && !hasConfigClaudeProjects {
+		t.Errorf("Default directory should contain '.claude/projects' or '.config/claude/projects', got: %s", defaultDir)
 	}
-	
+
 	// Should be an absolute path
 	if !filepath.IsAbs(defaultDir) {
 		t.Errorf("Default directory should be absolute path, got: %s", defaultDir)
@@ -291,15 +294,46 @@ func TestGetDefaultTUIDirectory(t *testing.T) {
 
 func TestGetDefaultTUIDirectory_ValidPath(t *testing.T) {
 	defaultDir := getDefaultTUIDirectory()
-	
+
 	// Should be a valid path format
 	if defaultDir == "" {
 		t.Error("Default directory should not be empty")
 	}
-	
+
 	// Should end with projects
 	if !strings.HasSuffix(defaultDir, "projects") {
 		t.Errorf("Default directory should end with 'projects', got: %s", defaultDir)
 	}
 }
 
+func TestGetDefaultTUIDirectory_FallbackBehavior(t *testing.T) {
+	// Create a temporary directory to simulate user home
+	tempHome := t.TempDir()
+	originalHome := os.Getenv("HOME")
+
+	defer func() {
+		// Restore original HOME
+		os.Setenv("HOME", originalHome)
+	}()
+
+	// Test case 1: When .claude directory exists, it should be preferred
+	os.Setenv("HOME", tempHome)
+	claudeDir := filepath.Join(tempHome, ".claude")
+	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+		t.Fatalf("Failed to create .claude directory: %v", err)
+	}
+
+	result := getDefaultTUIDirectory()
+	expected := filepath.Join(tempHome, ".claude", "projects")
+	if result != expected {
+		t.Errorf("Expected %s when .claude exists, got %s", expected, result)
+	}
+
+	// Test case 2: When .claude directory doesn't exist, should fallback to .config/claude
+	os.RemoveAll(claudeDir)
+	result = getDefaultTUIDirectory()
+	expected = filepath.Join(tempHome, ".config", "claude", "projects")
+	if result != expected {
+		t.Errorf("Expected %s when .claude doesn't exist, got %s", expected, result)
+	}
+}

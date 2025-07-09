@@ -5,8 +5,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/annenpolka/cclog/internal/parser"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // execCommand is a variable that can be replaced in tests to mock os/exec.Command
@@ -34,7 +34,7 @@ func generateResumeCommandWithDirectoryChange(filePath string, dangerous bool) (
 	}
 
 	dir := filepath.Dir(filePath)
-	
+
 	args := []string{"-r", sessionId}
 	if dangerous {
 		args = append(args, "--dangerously-skip-permissions")
@@ -70,7 +70,7 @@ func generateResumeCommandWithCWDChange(filePath string, dangerous bool) (string
 	if err != nil {
 		return "", nil, "", err
 	}
-	
+
 	args := []string{"-r", sessionId}
 	if dangerous {
 		args = append(args, "--dangerously-skip-permissions")
@@ -97,7 +97,7 @@ func executeResumeCommand(filePath string, dangerous bool) tea.Cmd {
 	}
 
 	cmd := execCommand(cmdName, cmdArgs...)
-	
+
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		if err != nil {
 			return resumeMsg{
@@ -105,7 +105,7 @@ func executeResumeCommand(filePath string, dangerous bool) tea.Cmd {
 				error:   fmt.Errorf("failed to execute command '%s %v': %w", cmdName, cmdArgs, err),
 			}
 		}
-		
+
 		return resumeMsg{
 			success: true,
 			error:   nil,
@@ -127,7 +127,7 @@ func executeResumeCommandWithCWDChange(filePath string, dangerous bool) tea.Cmd 
 
 	cmd := execCommand(cmdName, cmdArgs...)
 	cmd.Dir = cmdDir
-	
+
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		if err != nil {
 			return resumeMsg{
@@ -135,7 +135,7 @@ func executeResumeCommandWithCWDChange(filePath string, dangerous bool) tea.Cmd 
 				error:   fmt.Errorf("failed to execute command '%s %v' in dir '%s': %w", cmdName, cmdArgs, cmdDir, err),
 			}
 		}
-		
+
 		return resumeMsg{
 			success: true,
 			error:   nil,
@@ -157,7 +157,7 @@ func executeResumeCommandWithDirectoryChange(filePath string, dangerous bool) te
 
 	cmd := execCommand(cmdName, cmdArgs...)
 	cmd.Dir = cmdDir
-	
+
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		if err != nil {
 			return resumeMsg{
@@ -165,7 +165,7 @@ func executeResumeCommandWithDirectoryChange(filePath string, dangerous bool) te
 				error:   fmt.Errorf("failed to execute command '%s %v' in dir '%s': %w", cmdName, cmdArgs, cmdDir, err),
 			}
 		}
-		
+
 		return resumeMsg{
 			success: true,
 			error:   nil,

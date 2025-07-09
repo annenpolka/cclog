@@ -33,28 +33,28 @@ func main() {
 			fmt.Fprintf(os.Stderr, "TUI Error: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		// If no file selected (user cancelled), exit gracefully
 		if selectedFile == "" {
 			return
 		}
-		
+
 		// Run cclog on the selected file
 		newConfig := config
 		newConfig.InputPath = selectedFile
 		newConfig.TUIMode = false
-		
+
 		// Auto-detect if selection is a directory
 		if shouldSetDirectoryFlag(selectedFile) {
 			newConfig.IsDirectory = true
 		}
-		
+
 		output, err := cli.RunCommand(newConfig)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		// Print output
 		if config.OutputPath == "" {
 			fmt.Print(output)

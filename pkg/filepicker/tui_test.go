@@ -8,40 +8,40 @@ import (
 
 func TestUpdatePreviewSize(t *testing.T) {
 	tests := []struct {
-		name                string
-		terminalWidth       int
+		name                 string
+		terminalWidth        int
 		expectedPreviewWidth int
-		description         string
+		description          string
 	}{
 		{
-			name:                "Standard terminal width",
-			terminalWidth:       80,
+			name:                 "Standard terminal width",
+			terminalWidth:        80,
 			expectedPreviewWidth: 80, // Use full terminal width
-			description:         "80文字幅のターミナルでは80文字のプレビュー幅を期待",
+			description:          "80文字幅のターミナルでは80文字のプレビュー幅を期待",
 		},
 		{
-			name:                "Wide terminal width",
-			terminalWidth:       120,
+			name:                 "Wide terminal width",
+			terminalWidth:        120,
 			expectedPreviewWidth: 120, // Use full terminal width
-			description:         "120文字幅のターミナルでは120文字のプレビュー幅を期待",
+			description:          "120文字幅のターミナルでは120文字のプレビュー幅を期待",
 		},
 		{
-			name:                "Narrow terminal width",
-			terminalWidth:       40,
+			name:                 "Narrow terminal width",
+			terminalWidth:        40,
 			expectedPreviewWidth: 40, // Use full terminal width
-			description:         "40文字幅のターミナルでは40文字のプレビュー幅を期待",
+			description:          "40文字幅のターミナルでは40文字のプレビュー幅を期待",
 		},
 		{
-			name:                "Very narrow terminal",
-			terminalWidth:       10,
+			name:                 "Very narrow terminal",
+			terminalWidth:        10,
 			expectedPreviewWidth: 10, // Use full terminal width
-			description:         "10文字幅のターミナルでは10文字のプレビュー幅を期待",
+			description:          "10文字幅のターミナルでは10文字のプレビュー幅を期待",
 		},
 		{
-			name:                "Edge case - width 2",
-			terminalWidth:       2,
+			name:                 "Edge case - width 2",
+			terminalWidth:        2,
 			expectedPreviewWidth: 2, // Use full terminal width
-			description:         "2文字幅のターミナルでは2文字のプレビュー幅を期待",
+			description:          "2文字幅のターミナルでは2文字のプレビュー幅を期待",
 		},
 	}
 
@@ -58,7 +58,7 @@ func TestUpdatePreviewSize(t *testing.T) {
 
 			// Check if the preview width was set correctly
 			if m.preview.width != tt.expectedPreviewWidth {
-				t.Errorf("Expected preview width %d, got %d. %s", 
+				t.Errorf("Expected preview width %d, got %d. %s",
 					tt.expectedPreviewWidth, m.preview.width, tt.description)
 			}
 		})
@@ -95,7 +95,7 @@ func TestCurrentPreviewWidthCalculation(t *testing.T) {
 			}
 
 			if previewWidth != tt.currentPreviewWidth {
-				t.Errorf("Current logic test failed. Expected %d, got %d. %s", 
+				t.Errorf("Current logic test failed. Expected %d, got %d. %s",
 					tt.currentPreviewWidth, previewWidth, tt.description)
 			}
 		})
@@ -131,13 +131,13 @@ func TestColorfulUIStyles(t *testing.T) {
 				{Path: "test2.jsonl", IsDir: false},
 			}
 			m.cursor = tt.cursor
-			
+
 			// Test that the model has colorful styling capability
 			view := m.View()
 			if view == "" {
 				t.Error("View should not be empty")
 			}
-			
+
 			// Test that cursor position affects styling
 			if tt.cursor == tt.selectedFile {
 				// Now we check if the styling is actually applied
@@ -174,12 +174,12 @@ func TestDirectoryColorStyling(t *testing.T) {
 			m.files = []FileInfo{
 				{Path: "test", IsDir: tt.isDirectory},
 			}
-			
+
 			view := m.View()
 			if view == "" {
 				t.Error("View should not be empty")
 			}
-			
+
 			// Now we check if the styling is actually applied
 			// The view should contain appropriate styling for directories and files
 			if view == "" {
@@ -194,36 +194,36 @@ func TestDirectoryColorStyling(t *testing.T) {
 // TestSmallScreenScrolling tests scrolling behavior on small screens
 func TestSmallScreenScrolling(t *testing.T) {
 	tests := []struct {
-		name           string
-		terminalHeight int
-		fileCount      int
-		cursorPosition int
+		name            string
+		terminalHeight  int
+		fileCount       int
+		cursorPosition  int
 		expectedVisible bool
-		description    string
+		description     string
 	}{
 		{
-			name:           "Small screen - cursor should be visible",
-			terminalHeight: 10,
-			fileCount:      20,
-			cursorPosition: 15,
+			name:            "Small screen - cursor should be visible",
+			terminalHeight:  10,
+			fileCount:       20,
+			cursorPosition:  15,
 			expectedVisible: true,
-			description:    "小さい画面でカーソルが見切れないことを確認",
+			description:     "小さい画面でカーソルが見切れないことを確認",
 		},
 		{
-			name:           "Very small screen - cursor should be visible",
-			terminalHeight: 6,
-			fileCount:      10,
-			cursorPosition: 5,
+			name:            "Very small screen - cursor should be visible",
+			terminalHeight:  6,
+			fileCount:       10,
+			cursorPosition:  5,
 			expectedVisible: true,
-			description:    "極小画面でカーソルが見切れないことを確認",
+			description:     "極小画面でカーソルが見切れないことを確認",
 		},
 		{
-			name:           "Tiny screen - cursor should be visible",
-			terminalHeight: 4,
-			fileCount:      5,
-			cursorPosition: 3,
+			name:            "Tiny screen - cursor should be visible",
+			terminalHeight:  4,
+			fileCount:       5,
+			cursorPosition:  3,
 			expectedVisible: true,
-			description:    "最小画面でカーソルが見切れないことを確認",
+			description:     "最小画面でカーソルが見切れないことを確認",
 		},
 	}
 
@@ -232,7 +232,7 @@ func TestSmallScreenScrolling(t *testing.T) {
 			m := NewModel(".", false)
 			m.terminalHeight = tt.terminalHeight
 			m.terminalWidth = 80
-			
+
 			// Create test files
 			for i := 0; i < tt.fileCount; i++ {
 				m.files = append(m.files, FileInfo{
@@ -240,29 +240,29 @@ func TestSmallScreenScrolling(t *testing.T) {
 					IsDir: false,
 				})
 			}
-			
+
 			// Set cursor position
 			m.cursor = tt.cursorPosition
-			
+
 			// Test that cursor is within visible range
 			listHeight := m.getListHeight()
 			if listHeight <= 0 {
 				t.Errorf("List height should be positive, got %d", listHeight)
 			}
-			
+
 			// Update maxDisplayFiles based on available space
 			if listHeight > 0 {
 				m.maxDisplayFiles = listHeight
 			}
-			
+
 			// Use the ensureCursorVisible method to test the actual implementation
 			m.ensureCursorVisible()
-			
+
 			// Check if cursor is within visible range
 			isVisible := m.cursor >= m.scrollOffset && m.cursor < m.scrollOffset+m.maxDisplayFiles
-			
+
 			if isVisible != tt.expectedVisible {
-				t.Errorf("Expected cursor visibility %v, got %v. Cursor: %d, ScrollOffset: %d, MaxDisplayFiles: %d, ListHeight: %d. %s", 
+				t.Errorf("Expected cursor visibility %v, got %v. Cursor: %d, ScrollOffset: %d, MaxDisplayFiles: %d, ListHeight: %d. %s",
 					tt.expectedVisible, isVisible, m.cursor, m.scrollOffset, m.maxDisplayFiles, listHeight, tt.description)
 			}
 		})
@@ -306,11 +306,11 @@ func TestAdaptivePreviewSplit(t *testing.T) {
 			m := NewModel(".", false)
 			m.terminalHeight = tt.terminalHeight
 			m.preview.visible = true
-			
+
 			listHeight := m.getListHeight()
-			
+
 			if listHeight < tt.expectedMinimumList {
-				t.Errorf("List height %d should be at least %d for usability. %s", 
+				t.Errorf("List height %d should be at least %d for usability. %s",
 					listHeight, tt.expectedMinimumList, tt.description)
 			}
 		})
@@ -367,7 +367,7 @@ func TestCopySessionIDKeyHandler(t *testing.T) {
 
 			// Test sessionId extraction
 			sessionId, err := extractSessionID(tt.filePath)
-			
+
 			if tt.expectedErr {
 				if err == nil {
 					t.Errorf("Expected error but got none. %s", tt.description)
@@ -386,4 +386,3 @@ func TestCopySessionIDKeyHandler(t *testing.T) {
 		})
 	}
 }
-

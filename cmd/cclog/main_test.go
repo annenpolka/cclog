@@ -9,7 +9,7 @@ import (
 func TestDirectorySelectionHandling(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir := t.TempDir()
-	
+
 	// Test with directory selection
 	if stat, err := os.Stat(tempDir); err == nil && stat.IsDir() {
 		// This should be true for directory
@@ -25,12 +25,12 @@ func TestFileSelectionHandling(t *testing.T) {
 	// Create a temporary file for testing
 	tempDir := t.TempDir()
 	tempFile := filepath.Join(tempDir, "test.jsonl")
-	
+
 	err := os.WriteFile(tempFile, []byte("test content"), 0644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
-	
+
 	// Test with file selection
 	if stat, err := os.Stat(tempFile); err == nil {
 		// This should be false for file
@@ -45,20 +45,20 @@ func TestFileSelectionHandling(t *testing.T) {
 func TestShouldSetDirectoryFlag(t *testing.T) {
 	// Create test directory
 	tempDir := t.TempDir()
-	
+
 	// Test function
 	isDir := shouldSetDirectoryFlag(tempDir)
 	if !isDir {
 		t.Errorf("Expected shouldSetDirectoryFlag to return true for directory")
 	}
-	
+
 	// Create test file
 	tempFile := filepath.Join(tempDir, "test.txt")
 	err := os.WriteFile(tempFile, []byte("test"), 0644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
-	
+
 	// Test function with file
 	isDir = shouldSetDirectoryFlag(tempFile)
 	if isDir {

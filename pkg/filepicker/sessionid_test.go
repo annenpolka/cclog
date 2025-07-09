@@ -111,33 +111,33 @@ func TestExtractSessionID(t *testing.T) {
 
 func TestExtractSessionIDEdgeCases(t *testing.T) {
 	tests := []struct {
-		name     string
-		filePath string
-		wantErr  bool
+		name        string
+		filePath    string
+		wantErr     bool
 		description string
 	}{
 		{
-			name:     "empty_path",
-			filePath: "",
-			wantErr:  true,
+			name:        "empty_path",
+			filePath:    "",
+			wantErr:     true,
 			description: "空のパスではエラーが発生する",
 		},
 		{
-			name:     "path_with_spaces",
-			filePath: "/path/to/session with spaces.jsonl",
-			wantErr:  false,
+			name:        "path_with_spaces",
+			filePath:    "/path/to/session with spaces.jsonl",
+			wantErr:     false,
 			description: "スペースを含むファイル名でも動作する",
 		},
 		{
-			name:     "path_with_special_chars",
-			filePath: "/path/to/session-123_test!@#.jsonl",
-			wantErr:  false,
+			name:        "path_with_special_chars",
+			filePath:    "/path/to/session-123_test!@#.jsonl",
+			wantErr:     false,
 			description: "特殊文字を含むファイル名でも動作する",
 		},
 		{
-			name:     "very_long_sessionid",
-			filePath: "/path/to/very-long-session-id-with-many-characters-and-numbers-123456789.jsonl",
-			wantErr:  false,
+			name:        "very_long_sessionid",
+			filePath:    "/path/to/very-long-session-id-with-many-characters-and-numbers-123456789.jsonl",
+			wantErr:     false,
 			description: "非常に長いセッションIDでも動作する",
 		},
 	}
@@ -145,7 +145,7 @@ func TestExtractSessionIDEdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := extractSessionID(tt.filePath)
-			
+
 			if tt.wantErr && err == nil {
 				t.Errorf("Expected error but got none. %s", tt.description)
 			} else if !tt.wantErr && err != nil {

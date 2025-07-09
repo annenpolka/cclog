@@ -195,14 +195,14 @@ func TestFilterMessages(t *testing.T) {
 	}
 
 	filtered := FilterMessages(messages, true)
-	
+
 	if len(filtered) != 2 {
 		t.Errorf("Expected 2 filtered messages, got %d", len(filtered))
 	}
 
 	// Test with filtering disabled
 	unfiltered := FilterMessages(messages, false)
-	
+
 	if len(unfiltered) != 4 {
 		t.Errorf("Expected 4 unfiltered messages, got %d", len(unfiltered))
 	}
@@ -234,7 +234,7 @@ func TestFilterConversationLog(t *testing.T) {
 	}
 
 	filtered := FilterConversationLog(log, true)
-	
+
 	if len(filtered.Messages) != 1 {
 		t.Errorf("Expected 1 filtered message, got %d", len(filtered.Messages))
 	}
