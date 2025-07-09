@@ -2,7 +2,6 @@ package filepicker
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 )
@@ -322,56 +321,52 @@ func TestAdaptivePreviewSplit(t *testing.T) {
 func TestCopySessionIDKeyHandler(t *testing.T) {
 	tests := []struct {
 		name           string
-		setupFile      func() (string, func())
+		filePath       string
 		expectedErr    bool
+		expectedResult string
 		description    string
 	}{
 		{
-			name: "valid_jsonl_file",
-			setupFile: func() (string, func()) {
-				tmpFile, err := os.CreateTemp("", "test_*.jsonl")
-				if err != nil {
-					t.Fatalf("failed to create temp file: %v", err)
-				}
-				content := `{"sessionId": "session-123", "type": "human", "message": "Hello"}`
-				tmpFile.WriteString(content)
-				tmpFile.Close()
-				return tmpFile.Name(), func() { os.Remove(tmpFile.Name()) }
-			},
-			expectedErr: false,
-			description: "有効なJSONLファイルでSessionIdコピーが成功する",
+			name:           "valid_jsonl_file",
+			filePath:       "/path/to/session-123.jsonl",
+			expectedErr:    false,
+			expectedResult: "session-123",
+			description:    "有効なJSONLファイルでSessionIdコピーが成功する",
 		},
 		{
-			name: "invalid_jsonl_file",
-			setupFile: func() (string, func()) {
-				tmpFile, err := os.CreateTemp("", "test_*.txt")
-				if err != nil {
-					t.Fatalf("failed to create temp file: %v", err)
-				}
-				content := "This is not a JSONL file"
-				tmpFile.WriteString(content)
-				tmpFile.Close()
-				return tmpFile.Name(), func() { os.Remove(tmpFile.Name()) }
-			},
-			expectedErr: true,
-			description: "無効なJSONLファイルでSessionIdコピーが失敗する",
+			name:           "invalid_non_jsonl_file",
+			filePath:       "/path/to/session-123.txt",
+			expectedErr:    true,
+			expectedResult: "",
+			description:    "非JSONLファイルでSessionIdコピーが失敗する",
+		},
+		{
+			name:           "complex_sessionid",
+			filePath:       "/path/to/conv-2024-01-15-abc123.jsonl",
+			expectedErr:    false,
+			expectedResult: "conv-2024-01-15-abc123",
+			description:    "複雑なSessionIdでも正常に抽出される",
+		},
+		{
+			name:           "filename_with_dots",
+			filePath:       "/path/to/session.with.dots.jsonl",
+			expectedErr:    false,
+			expectedResult: "session.with.dots",
+			description:    "ドットを含むファイル名でも正常に動作する",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filePath, cleanup := tt.setupFile()
-			defer cleanup()
-
 			// Create model with test file
 			m := NewModel(".", false)
 			m.files = []FileInfo{
-				{Path: filePath, IsDir: false},
+				{Path: tt.filePath, IsDir: false},
 			}
 			m.cursor = 0
 
 			// Test sessionId extraction
-			sessionId, err := extractSessionID(filePath)
+			sessionId, err := extractSessionID(tt.filePath)
 			
 			if tt.expectedErr {
 				if err == nil {
@@ -385,8 +380,8 @@ func TestCopySessionIDKeyHandler(t *testing.T) {
 				return
 			}
 
-			if sessionId == "" {
-				t.Errorf("Expected non-empty sessionId. %s", tt.description)
+			if sessionId != tt.expectedResult {
+				t.Errorf("Expected sessionId %q, got %q. %s", tt.expectedResult, sessionId, tt.description)
 			}
 		})
 	}

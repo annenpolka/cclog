@@ -1,51 +1,28 @@
 package filepicker
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
-	"os"
+	"path/filepath"
 	"strings"
-
-	"github.com/annenpolka/cclog/pkg/types"
 )
 
-// extractSessionID extracts the sessionId from the first valid message in a JSONL file
+// extractSessionID extracts the sessionId from the filename by removing the extension
 func extractSessionID(filePath string) (string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to open file %s: %w", filePath, err)
+	// Get the base filename without directory
+	filename := filepath.Base(filePath)
+	
+	// Check if file has .jsonl extension
+	if !strings.HasSuffix(strings.ToLower(filename), ".jsonl") {
+		return "", fmt.Errorf("file %s is not a JSONL file", filename)
 	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	// Expand buffer size to handle large JSONL lines (up to 1MB)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		
-		// Skip empty lines
-		if line == "" {
-			continue
-		}
-
-		var message types.Message
-		if err := json.Unmarshal([]byte(line), &message); err != nil {
-			return "", fmt.Errorf("failed to parse JSONL line: %w", err)
-		}
-
-		// Check if sessionId is present and not empty
-		if message.SessionID == "" {
-			return "", fmt.Errorf("sessionId is empty or missing")
-		}
-
-		return message.SessionID, nil
+	
+	// Remove the .jsonl extension to get sessionId
+	sessionId := strings.TrimSuffix(filename, filepath.Ext(filename))
+	
+	// Check if sessionId is empty after removing extension
+	if sessionId == "" {
+		return "", fmt.Errorf("cannot extract sessionId from filename: %s", filename)
 	}
-
-	if err := scanner.Err(); err != nil {
-		return "", fmt.Errorf("failed to read file: %w", err)
-	}
-
-	return "", fmt.Errorf("no valid messages found in file")
+	
+	return sessionId, nil
 }
