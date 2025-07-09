@@ -8,67 +8,67 @@ import (
 
 func TestResumeCommand(t *testing.T) {
 	tests := []struct {
-		name           string
-		filePath       string
-		dangerous      bool
+		name            string
+		filePath        string
+		dangerous       bool
 		expectedCmdName string
 		expectedArgs    []string
-		expectedErr    bool
-		description    string
+		expectedErr     bool
+		description     string
 	}{
 		{
-			name:           "normal_resume_command",
-			filePath:       "/path/to/session-123.jsonl",
-			dangerous:      false,
+			name:            "normal_resume_command",
+			filePath:        "/path/to/session-123.jsonl",
+			dangerous:       false,
 			expectedCmdName: "claude",
 			expectedArgs:    []string{"-r", "session-123"},
-			expectedErr:    false,
-			description:    "通常のresume実行コマンドが正しく生成される",
+			expectedErr:     false,
+			description:     "通常のresume実行コマンドが正しく生成される",
 		},
 		{
-			name:           "dangerous_resume_command",
-			filePath:       "/path/to/session-456.jsonl",
-			dangerous:      true,
+			name:            "dangerous_resume_command",
+			filePath:        "/path/to/session-456.jsonl",
+			dangerous:       true,
 			expectedCmdName: "claude",
 			expectedArgs:    []string{"-r", "session-456", "--dangerously-skip-permissions"},
-			expectedErr:    false,
-			description:    "dangerous付きresume実行コマンドが正しく生成される",
+			expectedErr:     false,
+			description:     "dangerous付きresume実行コマンドが正しく生成される",
 		},
 		{
-			name:           "complex_sessionid_resume",
-			filePath:       "/path/to/conv-2024-01-15-abc123.jsonl",
-			dangerous:      false,
+			name:            "complex_sessionid_resume",
+			filePath:        "/path/to/conv-2024-01-15-abc123.jsonl",
+			dangerous:       false,
 			expectedCmdName: "claude",
 			expectedArgs:    []string{"-r", "conv-2024-01-15-abc123"},
-			expectedErr:    false,
-			description:    "複雑なsessionIdでもresume実行コマンドが正しく生成される",
+			expectedErr:     false,
+			description:     "複雑なsessionIdでもresume実行コマンドが正しく生成される",
 		},
 		{
-			name:           "non_jsonl_file_error",
-			filePath:       "/path/to/session-123.txt",
-			dangerous:      false,
+			name:            "non_jsonl_file_error",
+			filePath:        "/path/to/session-123.txt",
+			dangerous:       false,
 			expectedCmdName: "",
 			expectedArgs:    nil,
-			expectedErr:    true,
-			description:    "非JSONLファイルではエラーが発生する",
+			expectedErr:     true,
+			description:     "非JSONLファイルではエラーが発生する",
 		},
 		{
-			name:           "sessionid_with_dots",
-			filePath:       "/path/to/session.with.dots.jsonl",
-			dangerous:      true,
+			name:            "sessionid_with_dots",
+			filePath:        "/path/to/session.with.dots.jsonl",
+			dangerous:       true,
 			expectedCmdName: "claude",
 			expectedArgs:    []string{"-r", "session.with.dots", "--dangerously-skip-permissions"},
-			expectedErr:    false,
-			description:    "ドットを含むsessionIdでも正常に動作する",
+			expectedErr:     false,
+			description:     "ドットを含むsessionIdでも正常に動作する",
 		},
 		{
-			name:           "sessionId_injection_attempt",
-			filePath:       "/path/to/session-id;evil_command.jsonl",
-			dangerous:      false,
+			name:            "sessionId_injection_attempt",
+			filePath:        "/path/to/session-id;evil_command.jsonl",
+			dangerous:       false,
 			expectedCmdName: "claude",
 			expectedArgs:    []string{"-r", "session-id;evil_command"}, // Now treated as a single argument
-			expectedErr:    false,
-			description:    "sessionIdへのインジェクション試行が正しく処理される",
+			expectedErr:     false,
+			description:     "sessionIdへのインジェクション試行が正しく処理される",
 		},
 	}
 
@@ -106,44 +106,44 @@ func TestResumeCommand(t *testing.T) {
 
 func TestResumeWithProjectDirectoryChange(t *testing.T) {
 	tests := []struct {
-		name           string
-		filePath       string
-		dangerous      bool
+		name            string
+		filePath        string
+		dangerous       bool
 		expectedCmdName string
 		expectedArgs    []string
 		expectedDir     string
-		expectedErr    bool
-		description    string
+		expectedErr     bool
+		description     string
 	}{
 		{
-			name:           "resume_with_directory_change",
-			filePath:       "/path/to/project/session-123.jsonl",
-			dangerous:      false,
+			name:            "resume_with_directory_change",
+			filePath:        "/path/to/project/session-123.jsonl",
+			dangerous:       false,
 			expectedCmdName: "claude",
 			expectedArgs:    []string{"-r", "session-123"},
 			expectedDir:     "/path/to/project",
-			expectedErr:    false,
-			description:    "プロジェクトフォルダに移動してからresume実行",
+			expectedErr:     false,
+			description:     "プロジェクトフォルダに移動してからresume実行",
 		},
 		{
-			name:           "dangerous_resume_with_directory_change",
-			filePath:       "/path/to/project/session-456.jsonl",
-			dangerous:      true,
+			name:            "dangerous_resume_with_directory_change",
+			filePath:        "/path/to/project/session-456.jsonl",
+			dangerous:       true,
 			expectedCmdName: "claude",
 			expectedArgs:    []string{"-r", "session-456", "--dangerously-skip-permissions"},
 			expectedDir:     "/path/to/project",
-			expectedErr:    false,
-			description:    "プロジェクトフォルダに移動してからdangerous付きresume実行",
+			expectedErr:     false,
+			description:     "プロジェクトフォルダに移動してからdangerous付きresume実行",
 		},
 		{
-			name:           "resume_with_spaces_in_path",
-			filePath:       "/path/to/my project/session-789.jsonl", // Note: filePath should not be quoted here, filepath.Dir handles it
-			dangerous:      false,
+			name:            "resume_with_spaces_in_path",
+			filePath:        "/path/to/my project/session-789.jsonl", // Note: filePath should not be quoted here, filepath.Dir handles it
+			dangerous:       false,
 			expectedCmdName: "claude",
 			expectedArgs:    []string{"-r", "session-789"},
 			expectedDir:     "/path/to/my project",
-			expectedErr:    false,
-			description:    "スペースを含むパスでも正常に動作",
+			expectedErr:     false,
+			description:     "スペースを含むパスでも正常に動作",
 		},
 	}
 
@@ -185,7 +185,7 @@ func TestResumeWithProjectDirectoryChange(t *testing.T) {
 func TestResumeWithCWDDirectoryChange(t *testing.T) {
 	// Create temporary directory for test files
 	tempDir := t.TempDir()
-	
+
 	// Create test JSONL files with different CWD values
 	testFiles := []struct {
 		filename string
@@ -208,7 +208,7 @@ func TestResumeWithCWDDirectoryChange(t *testing.T) {
 			cwd:      "/project/working directory with spaces",
 		},
 	}
-	
+
 	// Write test files
 	for _, tf := range testFiles {
 		filePath := filepath.Join(tempDir, tf.filename)
@@ -217,50 +217,50 @@ func TestResumeWithCWDDirectoryChange(t *testing.T) {
 			t.Fatalf("Failed to create test file %s: %v", tf.filename, err)
 		}
 	}
-	
+
 	tests := []struct {
-		name        string
-		filename    string
-		dangerous   bool
+		name            string
+		filename        string
+		dangerous       bool
 		expectedCmdName string
 		expectedArgs    []string
 		expectedDir     string
-		expectedErr bool
-		description string
+		expectedErr     bool
+		description     string
 	}{
 		{
-			name:        "resume_with_cwd_change",
-			filename:    "session-123.jsonl",
-			dangerous:   false,
+			name:            "resume_with_cwd_change",
+			filename:        "session-123.jsonl",
+			dangerous:       false,
 			expectedCmdName: "claude",
 			expectedArgs:    []string{"-r", "session-123"},
 			expectedDir:     "/project/working/directory",
-			expectedErr: false,
+			expectedErr:     false,
 		},
 		{
-			name:        "dangerous_resume_with_cwd_change",
-			filename:    "session-456.jsonl",
-			dangerous:   true,
+			name:            "dangerous_resume_with_cwd_change",
+			filename:        "session-456.jsonl",
+			dangerous:       true,
 			expectedCmdName: "claude",
 			expectedArgs:    []string{"-r", "session-456", "--dangerously-skip-permissions"},
 			expectedDir:     "/project/working/directory",
-			expectedErr: false,
+			expectedErr:     false,
 		},
 		{
-			name:        "resume_with_cwd_spaces",
-			filename:    "session-with-spaces.jsonl",
-			dangerous:   false,
+			name:            "resume_with_cwd_spaces",
+			filename:        "session-with-spaces.jsonl",
+			dangerous:       false,
 			expectedCmdName: "claude",
 			expectedArgs:    []string{"-r", "session-with-spaces"},
 			expectedDir:     "/project/working directory with spaces",
-			expectedErr: false,
+			expectedErr:     false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			filePath := filepath.Join(tempDir, tt.filename)
-			
+
 			cmdName, args, dir, err := generateResumeCommandWithCWDChange(filePath, tt.dangerous)
 
 			if tt.expectedErr {
@@ -296,47 +296,47 @@ func TestResumeWithCWDDirectoryChange(t *testing.T) {
 
 func TestResumeKeyHandler(t *testing.T) {
 	tests := []struct {
-		name           string
-		filePath       string
-		keyPressed     string
+		name            string
+		filePath        string
+		keyPressed      string
 		expectedCmdName string
 		expectedArgs    []string
-		expectedErr    bool
-		description    string
+		expectedErr     bool
+		description     string
 	}{
 		{
-			name:           "r_key_normal_resume",
-			filePath:       "/path/to/session-123.jsonl",
-			keyPressed:     "r",
+			name:            "r_key_normal_resume",
+			filePath:        "/path/to/session-123.jsonl",
+			keyPressed:      "r",
 			expectedCmdName: "claude",
 			expectedArgs:    []string{"-r", "session-123"},
-			expectedErr:    false,
+			expectedErr:     false,
 		},
 		{
-			name:           "shift_r_dangerous_resume",
-			filePath:       "/path/to/session-456.jsonl",
-			keyPressed:     "R",
+			name:            "shift_r_dangerous_resume",
+			filePath:        "/path/to/session-456.jsonl",
+			keyPressed:      "R",
 			expectedCmdName: "claude",
 			expectedArgs:    []string{"-r", "session-456", "--dangerously-skip-permissions"},
-			expectedErr:    false,
+			expectedErr:     false,
 		},
 		{
-			name:           "r_key_non_jsonl_error",
-			filePath:       "/path/to/session-123.txt",
-			keyPressed:     "r",
+			name:            "r_key_non_jsonl_error",
+			filePath:        "/path/to/session-123.txt",
+			keyPressed:      "r",
 			expectedCmdName: "",
 			expectedArgs:    nil,
-			expectedErr:    true,
-			description:    "rキーで非JSONLファイル選択時はエラー",
+			expectedErr:     true,
+			description:     "rキーで非JSONLファイル選択時はエラー",
 		},
 		{
-			name:           "shift_r_non_jsonl_error",
-			filePath:       "/path/to/session-123.txt",
-			keyPressed:     "R",
+			name:            "shift_r_non_jsonl_error",
+			filePath:        "/path/to/session-123.txt",
+			keyPressed:      "R",
 			expectedCmdName: "",
 			expectedArgs:    nil,
-			expectedErr:    true,
-			description:    "Shift+Rキーで非JSONLファイル選択時はエラー",
+			expectedErr:     true,
+			description:     "Shift+Rキーで非JSONLファイル選択時はエラー",
 		},
 	}
 

@@ -28,7 +28,7 @@ type Config struct {
 func ParseArgs(args []string) (Config, error) {
 	config := Config{}
 	hasPathOption := false
-	
+
 	// Check if --path option is used to determine default behavior
 	for i := 1; i < len(args); i++ {
 		if args[i] == "--path" {
@@ -36,66 +36,66 @@ func ParseArgs(args []string) (Config, error) {
 			break
 		}
 	}
-	
+
 	// If no arguments provided or --path option is used, enable TUI mode and recursive mode by default
 	if len(args) < 2 || hasPathOption {
 		config.TUIMode = true
 		config.Recursive = true
 		// Continue to process default directory setup below
 	}
-	
+
 	// Only process arguments if we have them
 	if len(args) >= 2 {
 		for i := 1; i < len(args); i++ {
-		arg := args[i]
-		
-		switch arg {
-		case "-h", "--help":
-			config.ShowHelp = true
-			return config, nil
-		case "-d", "--directory":
-			config.IsDirectory = true
-		case "-o", "--output":
-			if i+1 >= len(args) {
-				return Config{}, fmt.Errorf("output flag requires a value")
+			arg := args[i]
+
+			switch arg {
+			case "-h", "--help":
+				config.ShowHelp = true
+				return config, nil
+			case "-d", "--directory":
+				config.IsDirectory = true
+			case "-o", "--output":
+				if i+1 >= len(args) {
+					return Config{}, fmt.Errorf("output flag requires a value")
+				}
+				config.OutputPath = args[i+1]
+				i++ // Skip next argument as it's the output path
+			case "--include-all":
+				config.IncludeAll = true
+			case "--show-uuid":
+				config.ShowUUID = true
+			case "--show-title":
+				config.ShowTitle = true
+			case "--tui":
+				config.TUIMode = true
+			case "-r", "--recursive":
+				config.Recursive = true
+				config.TUIMode = true
+			case "--path":
+				if i+1 >= len(args) {
+					return Config{}, fmt.Errorf("path flag requires a value")
+				}
+				config.InputPath = args[i+1]
+				i++ // Skip next argument as it's the input path
+			default:
+				if config.InputPath == "" {
+					config.InputPath = arg
+				}
 			}
-			config.OutputPath = args[i+1]
-			i++ // Skip next argument as it's the output path
-		case "--include-all":
-			config.IncludeAll = true
-		case "--show-uuid":
-			config.ShowUUID = true
-		case "--show-title":
-			config.ShowTitle = true
-		case "--tui":
-			config.TUIMode = true
-		case "-r", "--recursive":
-			config.Recursive = true
-			config.TUIMode = true
-		case "--path":
-			if i+1 >= len(args) {
-				return Config{}, fmt.Errorf("path flag requires a value")
-			}
-			config.InputPath = args[i+1]
-			i++ // Skip next argument as it's the input path
-		default:
-			if config.InputPath == "" {
-				config.InputPath = arg
-			}
-		}
 		}
 	}
 
 	if config.InputPath == "" && !config.ShowHelp && !config.TUIMode {
 		return Config{}, fmt.Errorf("input path is required")
 	}
-	
+
 	// Set default directory for TUI mode if no input path specified
 	if config.TUIMode && config.InputPath == "" {
 		defaultDir := getDefaultTUIDirectory()
-		// Ensure the directory exists
+		// Check if the directory exists
 		if err := ensureDefaultDirectoryExists(defaultDir); err != nil {
-			// If we can't create the directory, fall back to current directory
+			// If directory doesn't exist, fall back to current directory
 			config.InputPath = "."
 		} else {
 			config.InputPath = defaultDir
@@ -106,17 +106,27 @@ func ParseArgs(args []string) (Config, error) {
 }
 
 // getDefaultTUIDirectory returns the default directory for TUI mode
+// First tries $HOME/.claude/projects, then falls back to $HOME/.config/claude/projects
 func getDefaultTUIDirectory() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "." // Fallback to current directory
 	}
-	return filepath.Join(home, ".claude", "projects")
+
+	// First try $HOME/.claude/projects
+	claudeDir := filepath.Join(home, ".claude", "projects")
+	if _, err := os.Stat(filepath.Join(home, ".claude")); err == nil {
+		return claudeDir
+	}
+
+	// Fallback to $HOME/.config/claude/projects
+	return filepath.Join(home, ".config", "claude", "projects")
 }
 
-// ensureDefaultDirectoryExists creates the directory if it doesn't exist
+// ensureDefaultDirectoryExists checks if the directory exists without creating it
 func ensureDefaultDirectoryExists(dir string) error {
-	return os.MkdirAll(dir, 0755)
+	_, err := os.Stat(dir)
+	return err
 }
 
 // RunCommand executes the main command logic
@@ -124,7 +134,7 @@ func RunCommand(config Config) (string, error) {
 	if config.ShowHelp {
 		return GetHelpText(), nil
 	}
-	
+
 	if config.TUIMode {
 		// TUI mode is handled externally, return empty
 		return "", nil
@@ -154,7 +164,7 @@ func RunCommand(config Config) (string, error) {
 			ShowUUID:         config.ShowUUID,
 			ShowPlaceholders: config.IncludeAll,
 		})
-		
+
 		// Add title if requested
 		if config.ShowTitle && len(filteredLogs) > 0 {
 			title := types.ExtractTitle(filteredLogs[0])
@@ -173,7 +183,7 @@ func RunCommand(config Config) (string, error) {
 			ShowUUID:         config.ShowUUID,
 			ShowPlaceholders: config.IncludeAll,
 		})
-		
+
 		// Add title if requested
 		if config.ShowTitle {
 			title := types.ExtractTitle(filteredLog)

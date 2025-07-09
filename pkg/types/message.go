@@ -6,18 +6,18 @@ import (
 
 // Message represents a single message in the JSONL conversation log
 type Message struct {
-	ParentUUID   *string     `json:"parentUuid"`
-	IsSidechain  bool        `json:"isSidechain"`
-	UserType     string      `json:"userType"`
-	CWD          string      `json:"cwd"`
-	SessionID    string      `json:"sessionId"`
-	Version      string      `json:"version"`
-	Type         string      `json:"type"`
-	Message      interface{} `json:"message"`
-	IsMeta       bool        `json:"isMeta,omitempty"`
-	UUID         string      `json:"uuid"`
-	Timestamp    time.Time   `json:"timestamp"`
-	RequestID    string      `json:"requestId,omitempty"`
+	ParentUUID    *string     `json:"parentUuid"`
+	IsSidechain   bool        `json:"isSidechain"`
+	UserType      string      `json:"userType"`
+	CWD           string      `json:"cwd"`
+	SessionID     string      `json:"sessionId"`
+	Version       string      `json:"version"`
+	Type          string      `json:"type"`
+	Message       interface{} `json:"message"`
+	IsMeta        bool        `json:"isMeta,omitempty"`
+	UUID          string      `json:"uuid"`
+	Timestamp     time.Time   `json:"timestamp"`
+	RequestID     string      `json:"requestId,omitempty"`
 	ToolUseResult interface{} `json:"toolUseResult,omitempty"`
 }
 
@@ -35,7 +35,7 @@ type ClaudeMessage struct {
 
 // Summary represents conversation summary information
 type Summary struct {
-	Type    string `json:"type"`
-	Summary string `json:"summary"`
+	Type     string `json:"type"`
+	Summary  string `json:"summary"`
 	LeafUUID string `json:"leafUuid"`
 }

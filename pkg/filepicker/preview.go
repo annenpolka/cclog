@@ -3,11 +3,11 @@ package filepicker
 import (
 	"github.com/annenpolka/cclog/internal/formatter"
 	"github.com/annenpolka/cclog/internal/parser"
-	"os"
-	"strings"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/philistino/teacup/markdown"
+	"os"
+	"strings"
 )
 
 type PreviewModel struct {
@@ -16,7 +16,7 @@ type PreviewModel struct {
 	visible        bool
 	width          int
 	height         int
-	tempFile       string // Store temporary markdown file path
+	tempFile       string  // Store temporary markdown file path
 	splitRatio     float64 // Split ratio for preview height (0.2 to 0.8)
 	minHeight      int     // Minimum preview height
 	maxHeight      int     // Maximum preview height
@@ -40,23 +40,23 @@ func NewPreviewModel() *PreviewModel {
 
 func (p *PreviewModel) SetContent(content string) tea.Cmd {
 	p.content = content
-	
+
 	// Clean up previous temp file
 	if p.tempFile != "" {
 		os.Remove(p.tempFile)
 		p.tempFile = ""
 	}
-	
+
 	if content == "" {
 		return nil
 	}
-	
+
 	// Create temporary markdown file
 	tempFile, err := os.CreateTemp("", "cclog_preview_*.md")
 	if err != nil {
 		return nil
 	}
-	
+
 	// Write markdown content to temp file
 	if _, err := tempFile.Write([]byte(content)); err != nil {
 		tempFile.Close()
@@ -64,7 +64,7 @@ func (p *PreviewModel) SetContent(content string) tea.Cmd {
 		return nil
 	}
 	tempFile.Close()
-	
+
 	p.tempFile = tempFile.Name()
 	// Reset scroll position to top when loading new content
 	p.markdownBubble.GotoTop()
@@ -97,7 +97,7 @@ func (p *PreviewModel) GetSize() (int, int) {
 func (p *PreviewModel) SetDynamicHeight(terminalHeight int, splitRatio float64, minHeight int) {
 	p.splitRatio = splitRatio
 	p.minHeight = minHeight
-	
+
 	height, _ := calculatePreviewHeight(terminalHeight, splitRatio, minHeight)
 	p.height = height
 	p.markdownBubble.SetSize(p.width, p.height)
@@ -111,7 +111,7 @@ func (p *PreviewModel) GetSplitRatio() float64 {
 // AdjustSplitRatio adjusts the split ratio by the given delta
 func (p *PreviewModel) AdjustSplitRatio(delta float64) {
 	p.splitRatio += delta
-	
+
 	// Constrain to 0.2 - 0.8 range
 	if p.splitRatio < 0.2 {
 		p.splitRatio = 0.2
@@ -130,7 +130,7 @@ func (p *PreviewModel) Cleanup() {
 
 func (p *PreviewModel) Update(msg tea.Msg) (*PreviewModel, tea.Cmd) {
 	var cmd tea.Cmd
-	
+
 	// Handle scroll keys for markdown preview
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -152,7 +152,7 @@ func (p *PreviewModel) Update(msg tea.Msg) (*PreviewModel, tea.Cmd) {
 			}
 		}
 	}
-	
+
 	p.markdownBubble, cmd = p.markdownBubble.Update(msg)
 	return p, cmd
 }
@@ -161,7 +161,7 @@ func (p *PreviewModel) View() string {
 	if !p.visible {
 		return ""
 	}
-	
+
 	if p.content == "" {
 		style := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
@@ -169,7 +169,7 @@ func (p *PreviewModel) View() string {
 			Padding(1)
 		return style.Render("No preview available")
 	}
-	
+
 	return p.markdownBubble.View()
 }
 
@@ -177,22 +177,22 @@ func GeneratePreview(jsonlPath string, enableFiltering bool) (string, error) {
 	if jsonlPath == "" {
 		return "", nil
 	}
-	
+
 	// Parse JSONL file
 	log, err := parser.ParseJSONLFile(jsonlPath)
 	if err != nil {
 		return "", err
 	}
-	
+
 	// Apply filtering based on enableFiltering parameter
 	filteredLog := formatter.FilterConversationLog(log, enableFiltering)
-	
+
 	// Convert to markdown
 	markdown := formatter.FormatConversationToMarkdownWithOptions(filteredLog, formatter.FormatOptions{
 		ShowUUID:         false,
 		ShowPlaceholders: !enableFiltering, // Show placeholders when filtering is disabled (--include-all equivalent)
 	})
-	
+
 	return markdown, nil
 }
 
@@ -200,10 +200,10 @@ func GeneratePreview(jsonlPath string, enableFiltering bool) (string, error) {
 func calculatePreviewHeight(terminalHeight int, splitRatio float64, minHeight int) (int, int) {
 	// Reserve space for header, borders, and help text
 	availableHeight := terminalHeight - 6
-	
+
 	// For very small screens, ensure minimum usable list height
 	minListHeight := 2
-	if availableHeight < minListHeight + minHeight {
+	if availableHeight < minListHeight+minHeight {
 		// Prioritize list visibility on extremely small screens
 		listHeight := minListHeight
 		if availableHeight < minListHeight {
@@ -215,7 +215,7 @@ func calculatePreviewHeight(terminalHeight int, splitRatio float64, minHeight in
 		}
 		return previewHeight, listHeight
 	}
-	
+
 	// For small screens, use adaptive split ratio
 	adaptiveSplitRatio := splitRatio
 	if availableHeight < 15 {
@@ -226,16 +226,16 @@ func calculatePreviewHeight(terminalHeight int, splitRatio float64, minHeight in
 		// On very small screens, give even more space to the list
 		adaptiveSplitRatio = 0.5 // 50% preview, 50% list
 	}
-	
+
 	previewHeight := int(float64(availableHeight) * adaptiveSplitRatio)
-	
+
 	// Apply minimum height constraint
 	if previewHeight < minHeight {
 		previewHeight = minHeight
 	}
-	
+
 	listHeight := availableHeight - previewHeight
-	
+
 	// Ensure list height is at least minimum usable
 	if listHeight < minListHeight {
 		listHeight = minListHeight
@@ -244,7 +244,7 @@ func calculatePreviewHeight(terminalHeight int, splitRatio float64, minHeight in
 			previewHeight = 0
 		}
 	}
-	
+
 	return previewHeight, listHeight
 }
 
@@ -252,7 +252,7 @@ func calculatePreviewHeight(terminalHeight int, splitRatio float64, minHeight in
 func calculateOptimalSplitRatio(terminalHeight int, contentLines int) float64 {
 	// Base split ratio
 	baseRatio := 0.5
-	
+
 	// Adjust based on content length
 	if contentLines > terminalHeight {
 		// Long content needs more space
@@ -261,7 +261,7 @@ func calculateOptimalSplitRatio(terminalHeight int, contentLines int) float64 {
 		// Short content needs less space
 		baseRatio = 0.3
 	}
-	
+
 	// Adjust based on terminal size
 	if terminalHeight > 80 {
 		// Large terminal can accommodate more preview
@@ -270,14 +270,14 @@ func calculateOptimalSplitRatio(terminalHeight int, contentLines int) float64 {
 		// Small terminal needs balanced split
 		baseRatio = 0.5
 	}
-	
+
 	// Constrain to valid range
 	if baseRatio < 0.2 {
 		baseRatio = 0.2
 	} else if baseRatio > 0.8 {
 		baseRatio = 0.8
 	}
-	
+
 	return baseRatio
 }
 
@@ -286,7 +286,7 @@ func (p *PreviewModel) CountContentLines() int {
 	if p.content == "" {
 		return 0
 	}
-	
+
 	lines := strings.Split(p.content, "\n")
 	return len(lines)
 }

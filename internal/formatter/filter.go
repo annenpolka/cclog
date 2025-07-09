@@ -25,7 +25,7 @@ func IsContentfulMessage(msg types.Message) bool {
 
 	// Extract content and check if it's meaningful
 	content := extractMessageContent(msg.Message)
-	
+
 	// Filter out empty messages
 	if content == "" {
 		return false

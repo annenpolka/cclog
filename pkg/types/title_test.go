@@ -56,7 +56,7 @@ func TestExtractTitle(t *testing.T) {
 			want: "Claude Conversation",
 		},
 		{
-			name: "Handle empty messages",
+			name:     "Handle empty messages",
 			messages: []Message{},
 			want:     "(empty)",
 		},

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 	"time"
-	
+
 	"github.com/annenpolka/cclog/internal/parser"
 	"github.com/annenpolka/cclog/pkg/types"
 )
@@ -29,30 +29,30 @@ func (f FileInfo) Title() string {
 	if f.IsDir {
 		return f.Name + "/"
 	}
-	
+
 	// For JSONL files, display "date [project] title" format
 	if filepath.Ext(f.Name) == ".jsonl" {
 		dateStr := f.ModTime.Format("2006-01-02 15:04")
-		
+
 		// Add project name if available
 		var projectPart string
 		if f.ProjectName != "" {
 			projectPart = " [" + f.ProjectName + "]"
 		}
-		
+
 		// Add conversation title if available
 		if f.ConversationTitle != "" {
 			return dateStr + projectPart + " " + f.ConversationTitle
 		}
-		
+
 		// If no title but has project name, show date [project]
 		if f.ProjectName != "" {
 			return dateStr + projectPart
 		}
-		
+
 		return dateStr
 	}
-	
+
 	return f.Name
 }
 
@@ -68,7 +68,7 @@ func GetFiles(dir string) ([]FileInfo, error) {
 	}
 
 	var files []FileInfo
-	
+
 	// Add parent directory entry if not at root
 	absDir, err := filepath.Abs(dir)
 	if err == nil {
@@ -80,7 +80,7 @@ func GetFiles(dir string) ([]FileInfo, error) {
 			if parentStat, err := os.Stat(parentDir); err == nil {
 				parentModTime = parentStat.ModTime()
 			}
-			
+
 			parentInfo := FileInfo{
 				Name:    "..",
 				Path:    parentDir,
@@ -91,7 +91,7 @@ func GetFiles(dir string) ([]FileInfo, error) {
 			files = append(files, parentInfo)
 		}
 	}
-	
+
 	for _, entry := range entries {
 		info, err := entry.Info()
 		if err != nil {
@@ -105,7 +105,7 @@ func GetFiles(dir string) ([]FileInfo, error) {
 			Size:    info.Size(),
 			ModTime: info.ModTime(),
 		}
-		
+
 		// Extract conversation title and project name for JSONL files
 		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".jsonl" {
 			title, projectName := extractConversationInfo(fileInfo.Path)
@@ -123,7 +123,7 @@ func GetFiles(dir string) ([]FileInfo, error) {
 	// Keep parent directory at the beginning if it exists
 	var parentDir *FileInfo
 	var regularFiles []FileInfo
-	
+
 	for i, file := range files {
 		if file.Name == ".." {
 			parentDir = &files[i]
@@ -131,19 +131,19 @@ func GetFiles(dir string) ([]FileInfo, error) {
 			regularFiles = append(regularFiles, file)
 		}
 	}
-	
+
 	// Sort regular files by modification time (newest first)
 	sort.Slice(regularFiles, func(i, j int) bool {
 		return regularFiles[i].ModTime.After(regularFiles[j].ModTime)
 	})
-	
+
 	// Rebuild files slice with parent directory first (if exists)
 	var sortedFiles []FileInfo
 	if parentDir != nil {
 		sortedFiles = append(sortedFiles, *parentDir)
 	}
 	sortedFiles = append(sortedFiles, regularFiles...)
-	
+
 	return sortedFiles, nil
 }
 
@@ -154,12 +154,12 @@ func extractConversationInfo(filePath string) (string, string) {
 	if err != nil {
 		return "", ""
 	}
-	
+
 	// Skip empty files - return empty string to indicate this file should be filtered out
 	if len(log.Messages) == 0 {
 		return "", ""
 	}
-	
+
 	// Extract project name from CWD field of the first message that has one
 	var projectName string
 	for _, msg := range log.Messages {
@@ -168,13 +168,13 @@ func extractConversationInfo(filePath string) (string, string) {
 			break
 		}
 	}
-	
+
 	// Apply filtering to check if any meaningful messages remain after filtering
 	filteredLog := &types.ConversationLog{
 		Messages: make([]types.Message, 0),
 		FilePath: log.FilePath,
 	}
-	
+
 	// Manually filter messages using the same logic as formatter.FilterConversationLog
 	for _, msg := range log.Messages {
 		// Apply the same filtering logic as IsContentfulMessage
@@ -182,12 +182,12 @@ func extractConversationInfo(filePath string) (string, string) {
 			filteredLog.Messages = append(filteredLog.Messages, msg)
 		}
 	}
-	
+
 	// Skip files with no meaningful messages after filtering
 	if len(filteredLog.Messages) == 0 {
 		return "", ""
 	}
-	
+
 	// Extract title using existing title extraction logic
 	title := types.ExtractTitle(filteredLog)
 	return title, projectName
@@ -219,7 +219,7 @@ func isContentfulMessage(msg types.Message) bool {
 
 	// Extract content and check if it's meaningful
 	content := extractMessageContent(msg.Message)
-	
+
 	// Filter out empty messages
 	if content == "" {
 		return false
@@ -293,28 +293,28 @@ func extractMessageContent(message any) string {
 // GetFilesRecursive recursively collects all .jsonl files from a directory and its subdirectories
 func GetFilesRecursive(rootDir string) ([]FileInfo, error) {
 	var allFiles []FileInfo
-	
+
 	err := filepath.WalkDir(rootDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		// Skip directories
 		if d.IsDir() {
 			return nil
 		}
-		
+
 		// Only include .jsonl files
 		if filepath.Ext(d.Name()) != ".jsonl" {
 			return nil
 		}
-		
+
 		// Get file info for modification time
 		info, err := d.Info()
 		if err != nil {
 			return err
 		}
-		
+
 		fileInfo := FileInfo{
 			Name:    d.Name(),
 			Path:    path,
@@ -322,7 +322,7 @@ func GetFilesRecursive(rootDir string) ([]FileInfo, error) {
 			Size:    info.Size(),
 			ModTime: info.ModTime(),
 		}
-		
+
 		// Extract conversation title and project name for JSONL files
 		title, projectName := extractConversationInfo(path)
 		// Skip empty files (when title extraction fails due to empty file)
@@ -331,20 +331,20 @@ func GetFilesRecursive(rootDir string) ([]FileInfo, error) {
 		}
 		fileInfo.ConversationTitle = title
 		fileInfo.ProjectName = projectName
-		
+
 		allFiles = append(allFiles, fileInfo)
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Sort by modification time (newest first)
 	sort.Slice(allFiles, func(i, j int) bool {
 		return allFiles[i].ModTime.After(allFiles[j].ModTime)
 	})
-	
+
 	return allFiles, nil
 }
 
@@ -353,15 +353,15 @@ func extractProjectName(cwd string) string {
 	if cwd == "" || cwd == "/" {
 		return ""
 	}
-	
+
 	// Clean the path and get the base name
 	cleanPath := filepath.Clean(cwd)
 	projectName := filepath.Base(cleanPath)
-	
+
 	// Return empty string if it's root or dot
 	if projectName == "/" || projectName == "." {
 		return ""
 	}
-	
+
 	return projectName
 }
