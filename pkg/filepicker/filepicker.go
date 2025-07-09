@@ -18,6 +18,7 @@ type FileInfo struct {
 	Size              int64
 	ModTime           time.Time
 	ConversationTitle string
+	ProjectName       string
 }
 
 func (f FileInfo) FilterValue() string {
@@ -29,12 +30,26 @@ func (f FileInfo) Title() string {
 		return f.Name + "/"
 	}
 	
-	// For JSONL files, display "date title" format without dashes
+	// For JSONL files, display "date [project] title" format
 	if filepath.Ext(f.Name) == ".jsonl" {
 		dateStr := f.ModTime.Format("2006-01-02 15:04")
-		if f.ConversationTitle != "" {
-			return dateStr + " " + f.ConversationTitle
+		
+		// Add project name if available
+		var projectPart string
+		if f.ProjectName != "" {
+			projectPart = " [" + f.ProjectName + "]"
 		}
+		
+		// Add conversation title if available
+		if f.ConversationTitle != "" {
+			return dateStr + projectPart + " " + f.ConversationTitle
+		}
+		
+		// If no title but has project name, show date [project]
+		if f.ProjectName != "" {
+			return dateStr + projectPart
+		}
+		
 		return dateStr
 	}
 	
@@ -91,14 +106,15 @@ func GetFiles(dir string) ([]FileInfo, error) {
 			ModTime: info.ModTime(),
 		}
 		
-		// Extract conversation title for JSONL files
+		// Extract conversation title and project name for JSONL files
 		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".jsonl" {
-			title := extractConversationTitle(fileInfo.Path)
+			title, projectName := extractConversationInfo(fileInfo.Path)
 			// Skip empty files (when title extraction fails due to empty file)
 			if title == "" {
 				continue
 			}
 			fileInfo.ConversationTitle = title
+			fileInfo.ProjectName = projectName
 		}
 		files = append(files, fileInfo)
 	}
@@ -131,22 +147,29 @@ func GetFiles(dir string) ([]FileInfo, error) {
 	return sortedFiles, nil
 }
 
-// extractConversationTitle extracts title from JSONL conversation file
-func extractConversationTitle(filePath string) string {
-	// Parse the JSONL file to extract conversation title
+// extractConversationInfo extracts title and project name from JSONL conversation file
+func extractConversationInfo(filePath string) (string, string) {
+	// Parse the JSONL file to extract conversation information
 	log, err := parser.ParseJSONLFile(filePath)
 	if err != nil {
-		return ""
+		return "", ""
 	}
 	
 	// Skip empty files - return empty string to indicate this file should be filtered out
 	if len(log.Messages) == 0 {
-		return ""
+		return "", ""
+	}
+	
+	// Extract project name from CWD field of the first message that has one
+	var projectName string
+	for _, msg := range log.Messages {
+		if msg.CWD != "" {
+			projectName = extractProjectName(msg.CWD)
+			break
+		}
 	}
 	
 	// Apply filtering to check if any meaningful messages remain after filtering
-	// Import the formatter package for filtering functionality
-	// Note: We need to add the import at the top of the file
 	filteredLog := &types.ConversationLog{
 		Messages: make([]types.Message, 0),
 		FilePath: log.FilePath,
@@ -162,11 +185,18 @@ func extractConversationTitle(filePath string) string {
 	
 	// Skip files with no meaningful messages after filtering
 	if len(filteredLog.Messages) == 0 {
-		return ""
+		return "", ""
 	}
 	
 	// Extract title using existing title extraction logic
-	return types.ExtractTitle(filteredLog)
+	title := types.ExtractTitle(filteredLog)
+	return title, projectName
+}
+
+// extractConversationTitle extracts title from JSONL conversation file (backward compatibility)
+func extractConversationTitle(filePath string) string {
+	title, _ := extractConversationInfo(filePath)
+	return title
 }
 
 // isContentfulMessage replicates the filtering logic from formatter package
@@ -293,13 +323,14 @@ func GetFilesRecursive(rootDir string) ([]FileInfo, error) {
 			ModTime: info.ModTime(),
 		}
 		
-		// Extract conversation title for JSONL files
-		title := extractConversationTitle(path)
+		// Extract conversation title and project name for JSONL files
+		title, projectName := extractConversationInfo(path)
 		// Skip empty files (when title extraction fails due to empty file)
 		if title == "" {
 			return nil
 		}
 		fileInfo.ConversationTitle = title
+		fileInfo.ProjectName = projectName
 		
 		allFiles = append(allFiles, fileInfo)
 		return nil
@@ -315,4 +346,22 @@ func GetFilesRecursive(rootDir string) ([]FileInfo, error) {
 	})
 	
 	return allFiles, nil
+}
+
+// extractProjectName extracts project name from cwd path
+func extractProjectName(cwd string) string {
+	if cwd == "" || cwd == "/" {
+		return ""
+	}
+	
+	// Clean the path and get the base name
+	cleanPath := filepath.Clean(cwd)
+	projectName := filepath.Base(cleanPath)
+	
+	// Return empty string if it's root or dot
+	if projectName == "/" || projectName == "." {
+		return ""
+	}
+	
+	return projectName
 }
