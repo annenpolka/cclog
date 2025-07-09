@@ -2,6 +2,7 @@ package filepicker
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 )
@@ -312,6 +313,80 @@ func TestAdaptivePreviewSplit(t *testing.T) {
 			if listHeight < tt.expectedMinimumList {
 				t.Errorf("List height %d should be at least %d for usability. %s", 
 					listHeight, tt.expectedMinimumList, tt.description)
+			}
+		})
+	}
+}
+
+// TestCopySessionIDKeyHandler tests the 'c' key handler for copying sessionId
+func TestCopySessionIDKeyHandler(t *testing.T) {
+	tests := []struct {
+		name           string
+		setupFile      func() (string, func())
+		expectedErr    bool
+		description    string
+	}{
+		{
+			name: "valid_jsonl_file",
+			setupFile: func() (string, func()) {
+				tmpFile, err := os.CreateTemp("", "test_*.jsonl")
+				if err != nil {
+					t.Fatalf("failed to create temp file: %v", err)
+				}
+				content := `{"sessionId": "session-123", "type": "human", "message": "Hello"}`
+				tmpFile.WriteString(content)
+				tmpFile.Close()
+				return tmpFile.Name(), func() { os.Remove(tmpFile.Name()) }
+			},
+			expectedErr: false,
+			description: "有効なJSONLファイルでSessionIdコピーが成功する",
+		},
+		{
+			name: "invalid_jsonl_file",
+			setupFile: func() (string, func()) {
+				tmpFile, err := os.CreateTemp("", "test_*.txt")
+				if err != nil {
+					t.Fatalf("failed to create temp file: %v", err)
+				}
+				content := "This is not a JSONL file"
+				tmpFile.WriteString(content)
+				tmpFile.Close()
+				return tmpFile.Name(), func() { os.Remove(tmpFile.Name()) }
+			},
+			expectedErr: true,
+			description: "無効なJSONLファイルでSessionIdコピーが失敗する",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filePath, cleanup := tt.setupFile()
+			defer cleanup()
+
+			// Create model with test file
+			m := NewModel(".", false)
+			m.files = []FileInfo{
+				{Path: filePath, IsDir: false},
+			}
+			m.cursor = 0
+
+			// Test sessionId extraction
+			sessionId, err := extractSessionID(filePath)
+			
+			if tt.expectedErr {
+				if err == nil {
+					t.Errorf("Expected error but got none. %s", tt.description)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v. %s", err, tt.description)
+				return
+			}
+
+			if sessionId == "" {
+				t.Errorf("Expected non-empty sessionId. %s", tt.description)
 			}
 		})
 	}

@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"golang.design/x/clipboard"
 	"golang.org/x/term"
 	"github.com/annenpolka/cclog/internal/formatter"
 	"github.com/annenpolka/cclog/internal/parser"
@@ -73,6 +74,13 @@ type Model struct {
 }
 
 func NewModel(dir string, recursive bool) Model {
+	// Initialize clipboard
+	err := clipboard.Init()
+	if err != nil {
+		// If clipboard initialization fails, continue without clipboard functionality
+		// This prevents the application from crashing on systems without clipboard support
+	}
+	
 	return Model{
 		dir:              dir,
 		files:            []FileInfo{},
@@ -139,6 +147,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, tea.Batch(cmds...)
+		case "c":
+			// Copy sessionId to clipboard
+			if len(m.files) > 0 {
+				selectedItem := m.files[m.cursor]
+				if !selectedItem.IsDir {
+					return m, copySessionID(selectedItem.Path)
+				}
+			}
+			return m, tea.Batch(cmds...)
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -192,6 +209,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, cmd)
 			}
 		}
+	case copySessionIDMsg:
+		// Handle clipboard copy result
+		// For now, we silently handle success/failure
+		// In a more advanced implementation, we could show a status message
+		_ = msg
 	}
 	return m, tea.Batch(cmds...)
 }
@@ -297,6 +319,7 @@ func (m Model) View() string {
 				{keys: "enter", desc: "open"},
 				{keys: "p", desc: "preview"},
 				{keys: "s", desc: "filter"},
+				{keys: "c", desc: "copy sessionId"},
 				{keys: "d/u", desc: "scroll"},
 				{keys: "g/G", desc: "top/bot"},
 				{keys: "q", desc: "quit"},
@@ -307,6 +330,7 @@ func (m Model) View() string {
 				{keys: "enter", desc: "open"},
 				{keys: "p", desc: "preview"},
 				{keys: "s", desc: "filter"},
+				{keys: "c", desc: "copy sessionId"},
 				{keys: "q", desc: "quit"},
 			}))
 		}
@@ -320,6 +344,7 @@ func (m Model) View() string {
 				{keys: "gG", desc: "top/bot"},
 				{keys: "p", desc: "preview"},
 				{keys: "s", desc: "filter"},
+				{keys: "c", desc: "copy sessionId"},
 				{keys: "q", desc: "quit"},
 			}))
 		} else {
@@ -329,6 +354,7 @@ func (m Model) View() string {
 				{keys: "enter", desc: "open"},
 				{keys: "p", desc: "preview"},
 				{keys: "s", desc: "filter"},
+				{keys: "c", desc: "copy sessionId"},
 				{keys: "q", desc: "quit"},
 			}))
 		}
@@ -341,6 +367,7 @@ func (m Model) View() string {
 				{keys: "enter", desc: "open"},
 				{keys: "p", desc: "preview"},
 				{keys: "s", desc: "filter"},
+				{keys: "c", desc: "copy sessionId"},
 				{keys: "d/u", desc: "scroll"},
 				{keys: "g/G", desc: "top/bot"},
 				{keys: "q", desc: "quit"},
@@ -352,6 +379,7 @@ func (m Model) View() string {
 				{keys: "enter", desc: "open"},
 				{keys: "p", desc: "preview"},
 				{keys: "s", desc: "filter"},
+				{keys: "c", desc: "copy sessionId"},
 				{keys: "q", desc: "quit"},
 			}))
 		}
@@ -757,6 +785,32 @@ func (m *Model) updatePreviewContent() tea.Cmd {
 		}
 	} else {
 		return m.preview.SetContent("Preview not available for this file type")
+	}
+}
+
+// copySessionIDMsg represents the result of copying sessionId to clipboard
+type copySessionIDMsg struct {
+	success bool
+	error   error
+}
+
+// copySessionID copies the sessionId from the selected file to clipboard
+func copySessionID(filePath string) tea.Cmd {
+	return func() tea.Msg {
+		sessionId, err := extractSessionID(filePath)
+		if err != nil {
+			return copySessionIDMsg{
+				success: false,
+				error:   err,
+			}
+		}
+
+		clipboard.Write(clipboard.FmtText, []byte(sessionId))
+
+		return copySessionIDMsg{
+			success: true,
+			error:   nil,
+		}
 	}
 }
 
