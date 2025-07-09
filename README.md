@@ -1,8 +1,8 @@
-# cclog - Claude Conversation Log Viewer & Converter
+# cclog - Claude Code Conversation Log Viewer & Converter
 
 <img width="1620" height="1052" alt="Image" src="https://github.com/user-attachments/assets/fd7c3707-1fb3-4831-847e-f2f2bf9c0b2d" />
 
-A Go command-line tool that parses Claude conversation logs (JSONL format), converts them to human-readable Markdown, and provides a powerful TUI to browse, manage, and interact with your logs.
+A Go command-line tool that parses Claude Code conversation logs (JSONL format), converts them to human-readable Markdown, and provides a powerful TUI to browse, manage, and interact with your logs.
 
 ## Features
 
@@ -102,7 +102,7 @@ cclog --include-all --show-uuid conversation.jsonl
 
 ## Output Format
 
-The tool converts Claude conversation logs into clean Markdown format with:
+The tool converts Claude Code conversation logs into clean Markdown format with:
 
 - **Timestamps**: Automatically converted to the system's timezone for readability.
 - **Message Filtering**: Removes system messages, API errors, and interrupted requests by default.
