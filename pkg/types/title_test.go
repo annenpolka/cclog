@@ -229,6 +229,109 @@ func TestExtractTitle_NewlineReplacement(t *testing.T) {
 	}
 }
 
+func TestExtractTitle_ArrayContent(t *testing.T) {
+	// Test that ExtractTitle handles array-based content in user messages
+	tests := []struct {
+		name     string
+		messages []Message
+		want     string
+	}{
+		{
+			name: "User message with array content containing text",
+			messages: []Message{
+				{
+					Type: "user",
+					Message: map[string]interface{}{
+						"role": "user",
+						"content": []interface{}{
+							map[string]interface{}{
+								"type": "text",
+								"text": "goでこれらを人間が読みやすいmarkdownにパースするコマンドラインツールを作る",
+							},
+						},
+					},
+					Timestamp: time.Now(),
+				},
+			},
+			want: "goでこれらを人間が読みやすいmarkdownにパースするコマンドラインツールを作る",
+		},
+		{
+			name: "User message with array content containing multiple text blocks",
+			messages: []Message{
+				{
+					Type: "user",
+					Message: map[string]interface{}{
+						"role": "user",
+						"content": []interface{}{
+							map[string]interface{}{
+								"type": "text",
+								"text": "最初のテキストブロック",
+							},
+							map[string]interface{}{
+								"type": "text",
+								"text": "二番目のテキストブロック",
+							},
+						},
+					},
+					Timestamp: time.Now(),
+				},
+			},
+			want: "最初のテキストブロック",
+		},
+		{
+			name: "User message with array content containing tool result",
+			messages: []Message{
+				{
+					Type: "user",
+					Message: map[string]interface{}{
+						"role": "user",
+						"content": []interface{}{
+							map[string]interface{}{
+								"tool_use_id": "toolu_012QmdQYhr9RbGGztxjfpYmd",
+								"type":        "tool_result",
+								"content":     "- /Users/annenpolka/junks/cclog/",
+							},
+						},
+					},
+					Timestamp: time.Now(),
+				},
+			},
+			want: "- /Users/annenpolka/junks/cclog/",
+		},
+		{
+			name: "User message with array content but no text blocks should fallback",
+			messages: []Message{
+				{
+					Type: "user",
+					Message: map[string]interface{}{
+						"role": "user",
+						"content": []interface{}{
+							map[string]interface{}{
+								"type": "tool_use",
+								"name": "LS",
+							},
+						},
+					},
+					Timestamp: time.Now(),
+				},
+			},
+			want: "Claude Conversation",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			log := &ConversationLog{
+				Messages: tt.messages,
+			}
+			got := ExtractTitle(log)
+			if got != tt.want {
+				t.Errorf("ExtractTitle() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestTruncateTitleWithWidth(t *testing.T) {
 	tests := []struct {
 		name  string

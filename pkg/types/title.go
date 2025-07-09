@@ -81,8 +81,14 @@ func extractTitleFromUserMessage(msg Message) string {
 	// Try to parse as map
 	if msgMap, ok := msg.Message.(map[string]any); ok {
 		if content, exists := msgMap["content"]; exists {
+			// Handle string content
 			if title, ok := content.(string); ok {
 				return title
+			}
+			
+			// Handle array content
+			if contentArray, ok := content.([]interface{}); ok {
+				return extractTitleFromArrayContent(contentArray)
 			}
 		}
 	}
@@ -95,6 +101,36 @@ func extractTitleFromUserMessage(msg Message) string {
 		}
 	}
 
+	return ""
+}
+
+// extractTitleFromArrayContent extracts title from array-based content
+func extractTitleFromArrayContent(contentArray []interface{}) string {
+	for _, item := range contentArray {
+		if itemMap, ok := item.(map[string]interface{}); ok {
+			// Handle text type blocks
+			if itemType, exists := itemMap["type"]; exists {
+				if itemType == "text" {
+					if text, exists := itemMap["text"]; exists {
+						if textStr, ok := text.(string); ok && textStr != "" {
+							return textStr
+						}
+					}
+				}
+			}
+			
+			// Handle tool_result type blocks
+			if itemType, exists := itemMap["type"]; exists {
+				if itemType == "tool_result" {
+					if content, exists := itemMap["content"]; exists {
+						if contentStr, ok := content.(string); ok && contentStr != "" {
+							return contentStr
+						}
+					}
+				}
+			}
+		}
+	}
 	return ""
 }
 
