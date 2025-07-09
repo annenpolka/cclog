@@ -113,8 +113,6 @@ go test -cover ./...
 go build -o cclog ./cmd/cclog/
 ```
 
-The project follows test-driven development (TDD) practices with comprehensive test coverage and uses only standard library dependencies.
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
