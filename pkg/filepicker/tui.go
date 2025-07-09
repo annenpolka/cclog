@@ -156,6 +156,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return m, tea.Batch(cmds...)
+		case "r":
+			// Resume with normal command
+			if len(m.files) > 0 {
+				selectedItem := m.files[m.cursor]
+				if !selectedItem.IsDir {
+					return m, executeResumeCommand(selectedItem.Path, false)
+				}
+			}
+			return m, tea.Batch(cmds...)
+		case "R":
+			// Resume with dangerous permissions skip
+			if len(m.files) > 0 {
+				selectedItem := m.files[m.cursor]
+				if !selectedItem.IsDir {
+					return m, executeResumeCommand(selectedItem.Path, true)
+				}
+			}
+			return m, tea.Batch(cmds...)
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -211,6 +229,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case copySessionIDMsg:
 		// Handle clipboard copy result
+		// For now, we silently handle success/failure
+		// In a more advanced implementation, we could show a status message
+		_ = msg
+	case resumeMsg:
+		// Handle resume command execution result
 		// For now, we silently handle success/failure
 		// In a more advanced implementation, we could show a status message
 		_ = msg
@@ -320,6 +343,8 @@ func (m Model) View() string {
 				{keys: "p", desc: "preview"},
 				{keys: "s", desc: "filter"},
 				{keys: "c", desc: "copy sessionId"},
+				{keys: "r", desc: "resume"},
+				{keys: "R", desc: "resume (dangerous)"},
 				{keys: "d/u", desc: "scroll"},
 				{keys: "g/G", desc: "top/bot"},
 				{keys: "q", desc: "quit"},
@@ -331,6 +356,8 @@ func (m Model) View() string {
 				{keys: "p", desc: "preview"},
 				{keys: "s", desc: "filter"},
 				{keys: "c", desc: "copy sessionId"},
+				{keys: "r", desc: "resume"},
+				{keys: "R", desc: "resume (dangerous)"},
 				{keys: "q", desc: "quit"},
 			}))
 		}
@@ -345,6 +372,7 @@ func (m Model) View() string {
 				{keys: "p", desc: "preview"},
 				{keys: "s", desc: "filter"},
 				{keys: "c", desc: "copy sessionId"},
+				{keys: "r/R", desc: "resume"},
 				{keys: "q", desc: "quit"},
 			}))
 		} else {
@@ -355,6 +383,7 @@ func (m Model) View() string {
 				{keys: "p", desc: "preview"},
 				{keys: "s", desc: "filter"},
 				{keys: "c", desc: "copy sessionId"},
+				{keys: "r/R", desc: "resume"},
 				{keys: "q", desc: "quit"},
 			}))
 		}
@@ -368,6 +397,8 @@ func (m Model) View() string {
 				{keys: "p", desc: "preview"},
 				{keys: "s", desc: "filter"},
 				{keys: "c", desc: "copy sessionId"},
+				{keys: "r", desc: "resume"},
+				{keys: "R", desc: "resume (dangerous)"},
 				{keys: "d/u", desc: "scroll"},
 				{keys: "g/G", desc: "top/bot"},
 				{keys: "q", desc: "quit"},
@@ -380,6 +411,8 @@ func (m Model) View() string {
 				{keys: "p", desc: "preview"},
 				{keys: "s", desc: "filter"},
 				{keys: "c", desc: "copy sessionId"},
+				{keys: "r", desc: "resume"},
+				{keys: "R", desc: "resume (dangerous)"},
 				{keys: "q", desc: "quit"},
 			}))
 		}
