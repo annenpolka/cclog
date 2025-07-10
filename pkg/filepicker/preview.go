@@ -248,39 +248,6 @@ func calculatePreviewHeight(terminalHeight int, splitRatio float64, minHeight in
 	return previewHeight, listHeight
 }
 
-// calculateOptimalSplitRatio determines the optimal split ratio based on content and terminal size
-func calculateOptimalSplitRatio(terminalHeight int, contentLines int) float64 {
-	// Base split ratio
-	baseRatio := 0.5
-
-	// Adjust based on content length
-	if contentLines > terminalHeight {
-		// Long content needs more space
-		baseRatio = 0.7
-	} else if contentLines < terminalHeight/3 {
-		// Short content needs less space
-		baseRatio = 0.3
-	}
-
-	// Adjust based on terminal size
-	if terminalHeight > 80 {
-		// Large terminal can accommodate more preview
-		baseRatio += 0.1
-	} else if terminalHeight < 30 {
-		// Small terminal needs balanced split
-		baseRatio = 0.5
-	}
-
-	// Constrain to valid range
-	if baseRatio < 0.2 {
-		baseRatio = 0.2
-	} else if baseRatio > 0.8 {
-		baseRatio = 0.8
-	}
-
-	return baseRatio
-}
-
 // CountContentLines counts the number of lines in the content
 func (p *PreviewModel) CountContentLines() int {
 	if p.content == "" {
