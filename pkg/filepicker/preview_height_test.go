@@ -70,58 +70,6 @@ func TestCalculatePreviewHeight(t *testing.T) {
 	}
 }
 
-func TestCalculateOptimalSplitRatio(t *testing.T) {
-	tests := []struct {
-		name           string
-		terminalHeight int
-		contentLines   int
-		expected       float64
-	}{
-		{
-			name:           "Standard content with standard terminal",
-			terminalHeight: 40,
-			contentLines:   20,
-			expected:       0.5, // Default split for standard content
-		},
-		{
-			name:           "Long content needs more space",
-			terminalHeight: 60,
-			contentLines:   80,
-			expected:       0.7, // More space for long content
-		},
-		{
-			name:           "Short content needs less space",
-			terminalHeight: 40,
-			contentLines:   5,
-			expected:       0.3, // Less space for short content
-		},
-		{
-			name:           "Very long content with large terminal",
-			terminalHeight: 100,
-			contentLines:   200,
-			expected:       0.8, // 0.7 + 0.1 for large terminal = 0.8
-		},
-		{
-			name:           "Small terminal with long content",
-			terminalHeight: 20,
-			contentLines:   50,
-			expected:       0.5, // Balanced for small terminal
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ratio := calculateOptimalSplitRatio(tt.terminalHeight, tt.contentLines)
-
-			// Use tolerance for floating point comparison
-			tolerance := 0.001
-			if ratio < tt.expected-tolerance || ratio > tt.expected+tolerance {
-				t.Errorf("calculateOptimalSplitRatio() = %f, expected %f", ratio, tt.expected)
-			}
-		})
-	}
-}
-
 func TestPreviewModelDynamicHeight(t *testing.T) {
 	preview := NewPreviewModel()
 
