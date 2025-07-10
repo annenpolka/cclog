@@ -1,6 +1,7 @@
 package filepicker
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -11,7 +12,7 @@ import (
 	"github.com/annenpolka/cclog/pkg/types"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"golang.design/x/clipboard"
+	"github.com/atotto/clipboard"
 	"golang.org/x/term"
 )
 
@@ -74,13 +75,6 @@ type Model struct {
 }
 
 func NewModel(dir string, recursive bool) Model {
-	// Initialize clipboard
-	err := clipboard.Init()
-	if err != nil {
-		// If clipboard initialization fails, continue without clipboard functionality
-		// This prevents the application from crashing on systems without clipboard support
-	}
-
 	return Model{
 		dir:              dir,
 		files:            []FileInfo{},
@@ -837,7 +831,23 @@ func copySessionID(filePath string) tea.Cmd {
 			}
 		}
 
-		clipboard.Write(clipboard.FmtText, []byte(sessionId))
+		err = clipboard.WriteAll(sessionId)
+		if err != nil {
+			// Provide user-friendly error messages for common clipboard issues
+			var enhancedErr error
+			if strings.Contains(err.Error(), "xclip") || strings.Contains(err.Error(), "xsel") {
+				enhancedErr = fmt.Errorf("clipboard functionality requires xclip or xsel on Linux")
+			} else if strings.Contains(err.Error(), "not available") {
+				enhancedErr = fmt.Errorf("clipboard functionality is not available in this environment")
+			} else {
+				enhancedErr = fmt.Errorf("failed to copy to clipboard: %w", err)
+			}
+			
+			return copySessionIDMsg{
+				success: false,
+				error:   enhancedErr,
+			}
+		}
 
 		return copySessionIDMsg{
 			success: true,
