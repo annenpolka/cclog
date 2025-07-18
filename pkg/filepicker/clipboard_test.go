@@ -55,25 +55,25 @@ func TestCopySessionIDIntegration(t *testing.T) {
 	// This test verifies the integration with the actual clipboard library
 	// It should fail initially with the current golang.design/x/clipboard
 	// and pass after switching to atotto/clipboard
-	
+
 	filePath := "../../testdata/sample.jsonl"
-	
+
 	// Execute the copySessionID command
 	cmd := copySessionID(filePath)
 	msg := cmd()
-	
+
 	// Check if the result is of the expected type
 	result, ok := msg.(copySessionIDMsg)
 	if !ok {
 		t.Errorf("Expected copySessionIDMsg, got %T", msg)
 		return
 	}
-	
+
 	// For a valid file, we should get a successful result
 	if result.error != nil {
 		t.Errorf("Expected no error but got: %v", result.error)
 	}
-	
+
 	if !result.success {
 		t.Errorf("Expected success=true but got success=false")
 	}

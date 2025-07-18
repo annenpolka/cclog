@@ -332,7 +332,7 @@ func TestExtractTitle_ArrayContent(t *testing.T) {
 	}
 }
 
-func TestTruncateTitleWithWidth(t *testing.T) {
+func TestTruncateTitleWithSpecificWidth(t *testing.T) {
 	tests := []struct {
 		name  string
 		title string
@@ -391,9 +391,9 @@ func TestTruncateTitleWithWidth(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := TruncateTitleWithWidth(tt.title, tt.width)
+			got := TruncateTitle(tt.title, tt.width)
 			if got != tt.want {
-				t.Errorf("TruncateTitleWithWidth() = %v, want %v", got, tt.want)
+				t.Errorf("TruncateTitle() = %v, want %v", got, tt.want)
 			}
 		})
 	}

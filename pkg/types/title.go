@@ -134,14 +134,13 @@ func extractTitleFromArrayContent(contentArray []interface{}) string {
 	return ""
 }
 
-// TruncateTitle truncates title to appropriate length
-func TruncateTitle(title string) string {
-	return TruncateTitleWithWidth(title, maxTitleLength)
-}
-
-// TruncateTitleWithWidth truncates title to specified width
-func TruncateTitleWithWidth(title string, width int) string {
-	if title == "" || width <= 0 {
+// TruncateTitle truncates title to specified width, defaults to maxTitleLength if no width provided
+func TruncateTitle(title string, width ...int) string {
+	w := maxTitleLength
+	if len(width) > 0 {
+		w = width[0]
+	}
+	if title == "" || w <= 0 {
 		return ""
 	}
 
@@ -151,17 +150,17 @@ func TruncateTitleWithWidth(title string, width int) string {
 	// Count runes (not bytes) for proper Unicode handling
 	runes := []rune(title)
 
-	if len(runes) <= width {
+	if len(runes) <= w {
 		return title
 	}
 
 	// Handle case where width is smaller than ellipsis
 	ellipsisRunes := []rune(ellipsis)
-	if width <= len(ellipsisRunes) {
-		return string(runes[:width])
+	if w <= len(ellipsisRunes) {
+		return string(runes[:w])
 	}
 
 	// Truncate and add ellipsis
-	truncated := string(runes[:width-len(ellipsisRunes)])
+	truncated := string(runes[:w-len(ellipsisRunes)])
 	return truncated + ellipsis
 }

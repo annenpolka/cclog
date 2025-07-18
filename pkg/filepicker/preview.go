@@ -188,7 +188,7 @@ func GeneratePreview(jsonlPath string, enableFiltering bool) (string, error) {
 	filteredLog := formatter.FilterConversationLog(log, enableFiltering)
 
 	// Convert to markdown
-	markdown := formatter.FormatConversationToMarkdownWithOptions(filteredLog, formatter.FormatOptions{
+	markdown := formatter.FormatConversationToMarkdown(filteredLog, formatter.FormatOptions{
 		ShowUUID:         false,
 		ShowPlaceholders: !enableFiltering, // Show placeholders when filtering is disabled (--include-all equivalent)
 	})

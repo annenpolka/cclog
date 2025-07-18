@@ -10,9 +10,9 @@ import (
 	"github.com/annenpolka/cclog/internal/formatter"
 	"github.com/annenpolka/cclog/internal/parser"
 	"github.com/annenpolka/cclog/pkg/types"
+	"github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/atotto/clipboard"
 	"golang.org/x/term"
 )
 
@@ -254,7 +254,7 @@ func (m Model) View() string {
 	if m.terminalWidth > 0 && len(dirPath) > m.terminalWidth-20 { // Reserve space for emoji, modes, and spaces
 		availableWidth := m.terminalWidth - 20 // "📁 " + modes + "..."
 		if availableWidth > 0 {
-			dirPath = types.TruncateTitleWithWidth(dirPath, availableWidth)
+			dirPath = types.TruncateTitle(dirPath, availableWidth)
 		}
 	}
 
@@ -302,7 +302,7 @@ func (m Model) View() string {
 		availableWidth := m.terminalWidth - prefixWidth
 
 		// Truncate title first, then apply colorful styling
-		truncatedTitle := types.TruncateTitleWithWidth(title, m.maxTitleChars)
+		truncatedTitle := types.TruncateTitle(title, m.maxTitleChars)
 		styledTitle := m.getStyledTitle(truncatedTitle, file.IsDir, i == m.cursor)
 
 		// Create responsive content line
@@ -537,7 +537,7 @@ func convertJSONLToMarkdown(jsonlPath string, enableFiltering bool) (string, err
 	filteredLog := formatter.FilterConversationLog(log, enableFiltering)
 
 	// Convert to markdown
-	markdown := formatter.FormatConversationToMarkdownWithOptions(filteredLog, formatter.FormatOptions{
+	markdown := formatter.FormatConversationToMarkdown(filteredLog, formatter.FormatOptions{
 		ShowUUID:         false,
 		ShowPlaceholders: !enableFiltering, // Show placeholders when filtering is disabled (--include-all equivalent)
 	})
@@ -653,7 +653,7 @@ func (m Model) formatResponsiveLine(cursor, title string, availableWidth int) st
 	}
 
 	// Use dynamic title character limit instead of fixed truncation
-	formattedTitle := types.TruncateTitleWithWidth(title, m.maxTitleChars)
+	formattedTitle := types.TruncateTitle(title, m.maxTitleChars)
 
 	// Create the display line
 	line := cursor + " " + formattedTitle
@@ -842,7 +842,7 @@ func copySessionID(filePath string) tea.Cmd {
 			} else {
 				enhancedErr = fmt.Errorf("failed to copy to clipboard: %w", err)
 			}
-			
+
 			return copySessionIDMsg{
 				success: false,
 				error:   enhancedErr,

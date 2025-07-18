@@ -58,7 +58,7 @@ func TestFormatConversationToMarkdownWithUUID(t *testing.T) {
 		},
 	}
 
-	markdown := FormatConversationToMarkdownWithOptions(log, FormatOptions{ShowUUID: true})
+	markdown := FormatConversationToMarkdown(log, FormatOptions{ShowUUID: true})
 
 	// Check that UUID IS included when enabled
 	if !strings.Contains(markdown, "UUID: user-uuid-1") {
@@ -338,9 +338,9 @@ func TestExtractMessageContentWithPlaceholders(t *testing.T) {
 			}
 
 			// Test with placeholders (new behavior)
-			result = extractMessageContentWithPlaceholders(tt.message, tt.showPlaceholders)
+			result = extractMessageContent(tt.message, tt.showPlaceholders)
 			if result != tt.expectedWith {
-				t.Errorf("extractMessageContentWithPlaceholders() with placeholders = %v, want %v", result, tt.expectedWith)
+				t.Errorf("extractMessageContent() with placeholders = %v, want %v", result, tt.expectedWith)
 			}
 		})
 	}

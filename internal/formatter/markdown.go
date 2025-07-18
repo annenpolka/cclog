@@ -15,13 +15,12 @@ type FormatOptions struct {
 	ShowPlaceholders bool
 }
 
-// FormatConversationToMarkdown converts a single conversation log to markdown with default options
-func FormatConversationToMarkdown(log *types.ConversationLog) string {
-	return FormatConversationToMarkdownWithOptions(log, FormatOptions{ShowUUID: false})
-}
-
-// FormatConversationToMarkdownWithOptions converts a single conversation log to markdown with custom options
-func FormatConversationToMarkdownWithOptions(log *types.ConversationLog, options FormatOptions) string {
+// FormatConversationToMarkdown converts a single conversation log to markdown with optional FormatOptions
+func FormatConversationToMarkdown(log *types.ConversationLog, options ...FormatOptions) string {
+	opt := FormatOptions{ShowUUID: false}
+	if len(options) > 0 {
+		opt = options[0]
+	}
 	var sb strings.Builder
 
 	// Header
@@ -42,20 +41,19 @@ func FormatConversationToMarkdownWithOptions(log *types.ConversationLog, options
 			continue // Skip summary messages for now
 		}
 
-		sb.WriteString(formatMessageWithOptions(msg, options))
+		sb.WriteString(formatMessage(msg, opt))
 		sb.WriteString("\n")
 	}
 
 	return sb.String()
 }
 
-// FormatMultipleConversationsToMarkdown converts multiple conversation logs to markdown with default options
-func FormatMultipleConversationsToMarkdown(logs []*types.ConversationLog) string {
-	return FormatMultipleConversationsToMarkdownWithOptions(logs, FormatOptions{ShowUUID: false})
-}
-
-// FormatMultipleConversationsToMarkdownWithOptions converts multiple conversation logs to markdown with custom options
-func FormatMultipleConversationsToMarkdownWithOptions(logs []*types.ConversationLog, options FormatOptions) string {
+// FormatMultipleConversationsToMarkdown converts multiple conversation logs to markdown with optional FormatOptions
+func FormatMultipleConversationsToMarkdown(logs []*types.ConversationLog, options ...FormatOptions) string {
+	opt := FormatOptions{ShowUUID: false}
+	if len(options) > 0 {
+		opt = options[0]
+	}
 	var sb strings.Builder
 
 	// Main header
@@ -87,7 +85,7 @@ func FormatMultipleConversationsToMarkdownWithOptions(logs []*types.Conversation
 			if msg.Type == "summary" {
 				continue
 			}
-			sb.WriteString(formatMessageWithOptions(msg, options))
+			sb.WriteString(formatMessage(msg, opt))
 			sb.WriteString("\n")
 		}
 
@@ -97,13 +95,12 @@ func FormatMultipleConversationsToMarkdownWithOptions(logs []*types.Conversation
 	return sb.String()
 }
 
-// formatMessage formats a single message to markdown (legacy function with default options)
-func formatMessage(msg types.Message) string {
-	return formatMessageWithOptions(msg, FormatOptions{ShowUUID: false})
-}
-
-// formatMessageWithOptions formats a single message to markdown with custom options
-func formatMessageWithOptions(msg types.Message, options FormatOptions) string {
+// formatMessage formats a single message to markdown with optional FormatOptions
+func formatMessage(msg types.Message, options ...FormatOptions) string {
+	opt := FormatOptions{ShowUUID: false}
+	if len(options) > 0 {
+		opt = options[0]
+	}
 	var sb strings.Builder
 
 	// Determine message type and format accordingly
@@ -121,27 +118,26 @@ func formatMessageWithOptions(msg types.Message, options FormatOptions) string {
 	sb.WriteString(fmt.Sprintf("**Time:** %s\n\n", localTime.Format("2006-01-02 15:04:05")))
 
 	// Extract and format message content
-	content := extractMessageContentWithPlaceholders(msg.Message, options.ShowPlaceholders)
+	content := extractMessageContent(msg.Message, opt.ShowPlaceholders)
 	if content != "" {
 		sb.WriteString(content)
 		sb.WriteString("\n\n")
 	}
 
 	// Add metadata if present and enabled
-	if options.ShowUUID && msg.UUID != "" {
+	if opt.ShowUUID && msg.UUID != "" {
 		sb.WriteString(fmt.Sprintf("*UUID: %s*\n\n", msg.UUID))
 	}
 
 	return sb.String()
 }
 
-// extractMessageContent extracts readable content from the message field
-func extractMessageContent(message interface{}) string {
-	return extractMessageContentWithPlaceholders(message, false)
-}
-
-// extractMessageContentWithPlaceholders extracts readable content with optional informative placeholders
-func extractMessageContentWithPlaceholders(message interface{}, showPlaceholders bool) string {
+// extractMessageContent extracts readable content from the message field with optional informative placeholders
+func extractMessageContent(message interface{}, showPlaceholders ...bool) string {
+	showPlaceholdersBool := false
+	if len(showPlaceholders) > 0 {
+		showPlaceholdersBool = showPlaceholders[0]
+	}
 	if message == nil {
 		return ""
 	}
@@ -160,7 +156,7 @@ func extractMessageContentWithPlaceholders(message interface{}, showPlaceholders
 
 	// Handle string content
 	if str, ok := content.(string); ok {
-		if showPlaceholders {
+		if showPlaceholdersBool {
 			return generatePlaceholderForContent(str, msgMap)
 		}
 		return str
@@ -204,7 +200,7 @@ func extractMessageContentWithPlaceholders(message interface{}, showPlaceholders
 		}
 
 		result := strings.Join(parts, "\n")
-		if showPlaceholders {
+		if showPlaceholdersBool {
 			if result == "" && (hasToolUse || hasToolResult) {
 				// Generate more specific placeholder for tool operations
 				return generatePlaceholderForToolOperation(msgMap, hasToolUse, hasToolResult, toolNames, toolOperations)
