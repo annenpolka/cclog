@@ -118,7 +118,7 @@ func formatMessage(msg types.Message, options ...FormatOptions) string {
 	sb.WriteString(fmt.Sprintf("**Time:** %s\n\n", localTime.Format("2006-01-02 15:04:05")))
 
 	// Extract and format message content
-	content := extractMessageContent(msg.Message, opt.ShowPlaceholders)
+	content := ExtractMessageContent(msg.Message, opt.ShowPlaceholders)
 	if content != "" {
 		sb.WriteString(content)
 		sb.WriteString("\n\n")
@@ -132,8 +132,8 @@ func formatMessage(msg types.Message, options ...FormatOptions) string {
 	return sb.String()
 }
 
-// extractMessageContent extracts readable content from the message field with optional informative placeholders
-func extractMessageContent(message interface{}, showPlaceholders ...bool) string {
+// ExtractMessageContent extracts readable content from the message field with optional informative placeholders
+func ExtractMessageContent(message interface{}, showPlaceholders ...bool) string {
 	showPlaceholdersBool := false
 	if len(showPlaceholders) > 0 {
 		showPlaceholdersBool = showPlaceholders[0]

@@ -231,9 +231,9 @@ func TestExtractMessageContent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := extractMessageContent(tt.message)
+			result := ExtractMessageContent(tt.message)
 			if result != tt.expected {
-				t.Errorf("extractMessageContent() = %v, want %v", result, tt.expected)
+				t.Errorf("ExtractMessageContent() = %v, want %v", result, tt.expected)
 			}
 		})
 	}
@@ -332,15 +332,15 @@ func TestExtractMessageContentWithPlaceholders(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test without placeholders (current behavior)
-			result := extractMessageContent(tt.message)
+			result := ExtractMessageContent(tt.message)
 			if result != tt.expectedWithout {
-				t.Errorf("extractMessageContent() without placeholders = %v, want %v", result, tt.expectedWithout)
+				t.Errorf("ExtractMessageContent() without placeholders = %v, want %v", result, tt.expectedWithout)
 			}
 
 			// Test with placeholders (new behavior)
-			result = extractMessageContent(tt.message, tt.showPlaceholders)
+			result = ExtractMessageContent(tt.message, tt.showPlaceholders)
 			if result != tt.expectedWith {
-				t.Errorf("extractMessageContent() with placeholders = %v, want %v", result, tt.expectedWith)
+				t.Errorf("ExtractMessageContent() with placeholders = %v, want %v", result, tt.expectedWith)
 			}
 		})
 	}

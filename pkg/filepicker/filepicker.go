@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/annenpolka/cclog/internal/formatter"
 	"github.com/annenpolka/cclog/internal/parser"
 	"github.com/annenpolka/cclog/pkg/types"
 )
@@ -178,7 +179,7 @@ func extractConversationInfo(filePath string) (string, string) {
 	// Manually filter messages using the same logic as formatter.FilterConversationLog
 	for _, msg := range log.Messages {
 		// Apply the same filtering logic as IsContentfulMessage
-		if isContentfulMessage(msg) {
+		if formatter.IsContentfulMessage(msg) {
 			filteredLog.Messages = append(filteredLog.Messages, msg)
 		}
 	}
@@ -197,65 +198,6 @@ func extractConversationInfo(filePath string) (string, string) {
 func extractConversationTitle(filePath string) string {
 	title, _ := extractConversationInfo(filePath)
 	return title
-}
-
-// isContentfulMessage replicates the filtering logic from formatter package
-// to avoid circular imports while maintaining consistency
-func isContentfulMessage(msg types.Message) bool {
-	// Filter out system messages
-	if msg.Type == "system" {
-		return false
-	}
-
-	// Filter out summary messages
-	if msg.Type == "summary" {
-		return false
-	}
-
-	// Filter out meta messages
-	if msg.IsMeta {
-		return false
-	}
-
-	// Extract content and check if it's meaningful
-	content := extractMessageContent(msg.Message)
-
-	// Filter out empty messages
-	if content == "" {
-		return false
-	}
-
-	// Filter out API errors
-	if strings.Contains(content, "API Error") {
-		return false
-	}
-
-	// Filter out interrupted requests
-	if strings.Contains(content, "[Request interrupted") {
-		return false
-	}
-
-	// Filter out command messages
-	if strings.Contains(content, "<command-name>") {
-		return false
-	}
-
-	// Filter out bash inputs
-	if strings.Contains(content, "<bash-input>") {
-		return false
-	}
-
-	// Filter out command outputs
-	if strings.Contains(content, "<local-command-stdout>") {
-		return false
-	}
-
-	// Filter out system reminders and caveats
-	if strings.Contains(content, "Caveat: The messages below were generated") {
-		return false
-	}
-
-	return true
 }
 
 // extractMessageContent extracts string content from message
