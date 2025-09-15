@@ -32,12 +32,14 @@ func ParseJSONLFile(filePath string) (*domain.ConversationLog, error) {
 			continue
 		}
 
-		var msg domain.Message
-		if err := json.Unmarshal([]byte(line), &msg); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal line %d in file %s: %w", lineNum, filePath, err)
-		}
+    var msg domain.Message
+    if err := json.Unmarshal([]byte(line), &msg); err != nil {
+        // Skip malformed JSONL lines instead of failing the entire file.
+        // This makes parsing resilient to partial writes or tool errors.
+        continue
+    }
 
-		messages = append(messages, msg)
+    messages = append(messages, msg)
 	}
 
 	if err := scanner.Err(); err != nil {
