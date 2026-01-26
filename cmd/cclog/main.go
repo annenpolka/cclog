@@ -20,8 +20,8 @@ func main() {
 		return
 	}
 
-	// Show title when starting cclog
-	if !config.ShowHelp && !config.TUIMode {
+	// Show title when starting cclog (skip for --latest to keep output clean for scripting)
+	if !config.ShowHelp && !config.TUIMode && !config.Latest {
 		fmt.Println("cclog - Claude Conversation Log Converter")
 		fmt.Println("=========================================")
 		fmt.Println()

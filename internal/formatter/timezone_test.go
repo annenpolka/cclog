@@ -35,9 +35,9 @@ func TestGetSystemTimezoneWithEnvironmentVariable(t *testing.T) {
 	}()
 
 	// Test that function returns time.Local
-    tz := GetSystemTimezone()
-    // Compare pointers directly to avoid cmp on unexported fields in time.Location
-    testutil.True(t, tz == time.Local)
+	tz := GetSystemTimezone()
+	// Compare pointers directly to avoid cmp on unexported fields in time.Location
+	testutil.True(t, tz == time.Local)
 
 	// Test with manual timezone creation to verify our understanding
 	testCases := []struct {
