@@ -1,12 +1,13 @@
 package cli
 
 import (
-    "fmt"
-    "os"
-    "path/filepath"
-    "strings"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
-    "github.com/annenpolka/cclog/internal/usecase"
+	"github.com/annenpolka/cclog/internal/usecase"
+	"github.com/annenpolka/cclog/pkg/filepicker"
 )
 
 // Config represents command-line configuration
@@ -20,6 +21,8 @@ type Config struct {
 	TUIMode     bool
 	Recursive   bool
 	ShowTitle   bool
+	Latest      bool
+	AutoOutput  bool // When true with --latest, auto-generate output filename from title
 }
 
 // ParseArgs parses command-line arguments and returns configuration
@@ -54,11 +57,14 @@ func ParseArgs(args []string) (Config, error) {
 			case "-d", "--directory":
 				config.IsDirectory = true
 			case "-o", "--output":
-				if i+1 >= len(args) {
-					return Config{}, fmt.Errorf("output flag requires a value")
+				// Check if next arg exists and is not another flag
+				if i+1 >= len(args) || strings.HasPrefix(args[i+1], "-") {
+					// No value provided - mark for auto-generation (used with --latest)
+					config.AutoOutput = true
+				} else {
+					config.OutputPath = args[i+1]
+					i++ // Skip next argument as it is the output path
 				}
-				config.OutputPath = args[i+1]
-				i++ // Skip next argument as it's the output path
 			case "--include-all":
 				config.IncludeAll = true
 			case "--show-uuid":
@@ -70,6 +76,8 @@ func ParseArgs(args []string) (Config, error) {
 			case "-r", "--recursive":
 				config.Recursive = true
 				config.TUIMode = true
+			case "--latest":
+				config.Latest = true
 			case "--path":
 				if i+1 >= len(args) {
 					return Config{}, fmt.Errorf("path flag requires a value")
@@ -82,6 +90,15 @@ func ParseArgs(args []string) (Config, error) {
 				}
 			}
 		}
+	}
+
+	// --latest mode requires a directory path but not TUI mode
+	if config.Latest {
+		config.TUIMode = false
+		if config.InputPath == "" {
+			config.InputPath = getDefaultTUIDirectory()
+		}
+		return config, nil
 	}
 
 	if config.InputPath == "" && !config.ShowHelp && !config.TUIMode {
@@ -133,6 +150,15 @@ func RunCommand(config Config) (string, error) {
 		return GetHelpText(), nil
 	}
 
+	// Handle --latest flag: output session UUID and title of the most recent conversation
+	if config.Latest {
+		// When -o is used, convert latest to markdown and save to file
+		if config.AutoOutput || config.OutputPath != "" {
+			return convertLatestToFile(config.InputPath, config.OutputPath)
+		}
+		return getLatestSessionInfo(config.InputPath)
+	}
+
 	if config.TUIMode {
 		// TUI mode is handled externally, return empty
 		return "", nil
@@ -181,6 +207,142 @@ func RunCommand(config Config) (string, error) {
 	return markdown, nil
 }
 
+// getLatestSessionInfo retrieves the session UUID and title of the most recent conversation.
+// It recursively searches the given directory for JSONL files, sorted by modification time,
+// and returns the session ID and extracted title from the latest file.
+func getLatestSessionInfo(dirPath string) (string, error) {
+	files, err := filepicker.GetFilesRecursive(dirPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to search directory: %w", err)
+	}
+
+	if len(files) == 0 {
+		return "", fmt.Errorf("no conversation files found in: %s", dirPath)
+	}
+
+	// Files are already sorted by ModTime descending, so the first file is the latest
+	latestFile := files[0]
+	println("Latest file found:", latestFile.Path)
+	// Get session ID by parsing the file
+	sessionID, err := usecase.GetSessionID(latestFile.Path)
+	if err != nil {
+		return "", fmt.Errorf("failed to get session ID: %w", err)
+	}
+
+	// Use the title already extracted by filepicker
+	title := latestFile.ConversationTitle
+
+	return fmt.Sprintf("%s\t%s", sessionID, title), nil
+}
+
+// convertLatestToFile finds the latest conversation, converts it to markdown,
+// and saves it to the specified filename or an auto-generated one based on the title.
+// If the file already exists, a counter suffix is added to avoid overwriting.
+func convertLatestToFile(dirPath string, outputPath string) (string, error) {
+	files, err := filepicker.GetFilesRecursive(dirPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to search directory: %w", err)
+	}
+
+	if len(files) == 0 {
+		return "", fmt.Errorf("no conversation files found in: %s", dirPath)
+	}
+
+	// Files are already sorted by ModTime descending, so the first file is the latest
+	latestFile := files[0]
+
+	// Use provided filename or generate from title
+	if outputPath == "" {
+		outputPath = generateFilenameFromTitle(latestFile.ConversationTitle)
+	}
+
+	// Avoid overwriting existing files by adding counter suffix
+	outputPath = getUniqueFilename(outputPath)
+
+	// Convert to markdown
+	markdown, err := usecase.GenerateMarkdownFromFile(latestFile.Path, usecase.Options{
+		ShowTitle: true,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to convert conversation: %w", err)
+	}
+
+	// Write to file
+	if err := os.WriteFile(outputPath, []byte(markdown), 0644); err != nil {
+		return "", fmt.Errorf("failed to write output file: %w", err)
+	}
+
+	return fmt.Sprintf("Output written to: %s", outputPath), nil
+}
+
+// getUniqueFilename returns a filename that doesn't exist by adding a counter suffix.
+// Example: "hello_world.md" -> "hello_world_1.md" -> "hello_world_2.md"
+func getUniqueFilename(path string) string {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return path // File doesn't exist, use as-is
+	}
+
+	ext := filepath.Ext(path)
+	base := strings.TrimSuffix(path, ext)
+
+	for i := 1; ; i++ {
+		newPath := fmt.Sprintf("%s_%d%s", base, i, ext)
+		if _, err := os.Stat(newPath); os.IsNotExist(err) {
+			return newPath
+		}
+	}
+}
+
+// generateFilenameFromTitle creates a filename from the first two words of a title.
+// Words are connected with underscores and the .md extension is added.
+// For CJK text without spaces, it takes the first 20 characters instead.
+// Example: "hello world foo bar" -> "hello_world.md"
+func generateFilenameFromTitle(title string) string {
+	// Split title into words
+	words := strings.Fields(title)
+
+	// Take first two words (or fewer if title is shorter)
+	var parts []string
+	for i := 0; i < len(words) && i < 2; i++ {
+		// Clean word: remove non-alphanumeric characters except unicode letters
+		cleaned := sanitizeForFilename(words[i])
+		if cleaned != "" {
+			parts = append(parts, cleaned)
+		}
+	}
+
+	// Fallback if no valid words
+	if len(parts) == 0 {
+		return "conversation.md"
+	}
+
+	filename := strings.Join(parts, "_")
+
+	// Limit filename length (for CJK text that may not have spaces)
+	runes := []rune(filename)
+	if len(runes) > 20 {
+		filename = string(runes[:20])
+	}
+
+	return filename + ".md"
+}
+
+// sanitizeForFilename removes characters that are unsafe for filenames.
+func sanitizeForFilename(s string) string {
+	var result strings.Builder
+	for _, r := range s {
+		// Keep letters (including unicode), numbers, and some safe characters
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
+			(r >= '0' && r <= '9') || r == '-' || r == '_' ||
+			(r >= 0x4E00 && r <= 0x9FFF) || // CJK characters
+			(r >= 0x3040 && r <= 0x309F) || // Hiragana
+			(r >= 0x30A0 && r <= 0x30FF) { // Katakana
+			result.WriteRune(r)
+		}
+	}
+	return result.String()
+}
+
 // applyOptionalTitle prefixes the markdown with a top-level title when enabled.
 // For multiple logs, it uses the first conversation to extract the title,
 // matching the previous behavior.
@@ -206,6 +368,8 @@ OPTIONS:
     --tui              Open interactive file picker (TUI mode)
     -r, --recursive    Recursively search for .jsonl files and open TUI mode
     --path PATH        Specify directory path for TUI mode
+    --latest           Output the session UUID and title of the most recent conversation
+                       (with -o: convert to markdown; omit FILE for auto-naming from title)
     -h, --help         Show this help message
 
 EXAMPLES:
@@ -226,6 +390,15 @@ EXAMPLES:
 
     # Recursively find and list all JSONL files (explicit recursive mode)
     cclog -r /path/to/logs
+
+    # Get the latest session UUID and title
+    cclog --latest
+
+    # Convert latest conversation to markdown (auto-named from title)
+    cclog --latest -o
+
+    # Convert latest conversation to specific file
+    cclog --latest -o output.md
 
     # Open interactive file picker (explicit TUI mode)
     cclog --tui

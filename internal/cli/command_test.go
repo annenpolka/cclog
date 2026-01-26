@@ -156,6 +156,33 @@ func TestParseArgs(t *testing.T) {
 			expected: Config{},
 			wantErr:  true,
 		},
+		{
+			name: "latest flag",
+			args: []string{"cclog", "--latest"},
+			expected: Config{
+				Latest: true,
+			},
+			wantErr: false,
+		},
+		{
+			name: "latest flag with path",
+			args: []string{"cclog", "--latest", "--path", "/custom/path"},
+			expected: Config{
+				Latest:    true,
+				InputPath: "/custom/path",
+				Recursive: true, // --path enables recursive by default
+			},
+			wantErr: false,
+		},
+		{
+			name: "latest flag should disable TUI mode",
+			args: []string{"cclog", "--latest"},
+			expected: Config{
+				Latest:  true,
+				TUIMode: false,
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -311,6 +338,179 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func TestRunCommand_Latest(t *testing.T) {
+	// Create a temporary directory with a test JSONL file
+	// File name is the session UUID (matching real Claude Code conversation log naming)
+	tempDir := t.TempDir()
+	sessionUUID := "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+	testFile := filepath.Join(tempDir, sessionUUID+".jsonl")
+
+	// Test content (sessionId in content is ignored; file name is the source of truth)
+	testContent := `{"type":"user","sessionId":"ignored","message":{"role":"user","content":"hello world"},"timestamp":"2025-07-06T05:01:29.618Z","uuid":"msg-uuid"}`
+	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	config := Config{
+		InputPath: tempDir,
+		Latest:    true,
+	}
+
+	output, err := RunCommand(config)
+	if err != nil {
+		t.Fatalf("RunCommand with --latest failed: %v", err)
+	}
+
+	// Output should contain the session UUID (extracted from file name)
+	if !strings.Contains(output, sessionUUID) {
+		t.Errorf("Output should contain session UUID, got: %s", output)
+	}
+
+	// Output should contain the title (first user message content)
+	if !strings.Contains(output, "hello world") {
+		t.Errorf("Output should contain conversation title, got: %s", output)
+	}
+
+	// Output should be tab-separated
+	if !strings.Contains(output, "\t") {
+		t.Errorf("Output should be tab-separated, got: %s", output)
+	}
+}
+
+func TestRunCommand_Latest_NoFiles(t *testing.T) {
+	// Create an empty temporary directory
+	tempDir := t.TempDir()
+
+	config := Config{
+		InputPath: tempDir,
+		Latest:    true,
+	}
+
+	_, err := RunCommand(config)
+	if err == nil {
+		t.Fatal("RunCommand with --latest should fail when no files found")
+	}
+
+	if !strings.Contains(err.Error(), "no conversation files found") {
+		t.Errorf("Error should mention no files found, got: %v", err)
+	}
+}
+
+func TestGetUniqueFilename(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create initial file
+	testFile := filepath.Join(tempDir, "test.md")
+	if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test: should return _1 suffix when file exists
+	result := getUniqueFilename(testFile)
+	expected := filepath.Join(tempDir, "test_1.md")
+	testutil.Diff(t, expected, result)
+
+	// Create _1 file
+	if err := os.WriteFile(expected, []byte("content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test: should return _2 suffix when _1 also exists
+	result = getUniqueFilename(testFile)
+	expected = filepath.Join(tempDir, "test_2.md")
+	testutil.Diff(t, expected, result)
+
+	// Test: non-existent file returns as-is
+	nonExistent := filepath.Join(tempDir, "new.md")
+	result = getUniqueFilename(nonExistent)
+	testutil.Diff(t, nonExistent, result)
+}
+
+func TestGenerateFilenameFromTitle(t *testing.T) {
+	tests := []struct {
+		name     string
+		title    string
+		expected string
+	}{
+		{
+			name:     "two English words",
+			title:    "hello world foo bar",
+			expected: "hello_world.md",
+		},
+		{
+			name:     "single word",
+			title:    "hello",
+			expected: "hello.md",
+		},
+		{
+			name:     "Japanese text truncated",
+			title:    "これは長い日本語のタイトルですテスト",
+			expected: "これは長い日本語のタイトルですテスト.md",
+		},
+		{
+			name:     "very long Japanese text",
+			title:    "これは非常に長い日本語のタイトルで二十文字を超えています",
+			expected: "これは非常に長い日本語のタイトルで二十文.md", // 20 runes + .md
+		},
+		{
+			name:     "empty title",
+			title:    "",
+			expected: "conversation.md",
+		},
+		{
+			name:     "special characters removed",
+			title:    "hello! @world# test",
+			expected: "hello_world.md",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := generateFilenameFromTitle(tt.title)
+			testutil.Diff(t, tt.expected, result)
+		})
+	}
+}
+
+func TestRunCommand_Latest_AutoOutput(t *testing.T) {
+	// Create a temporary directory with a test JSONL file
+	tempDir := t.TempDir()
+	sessionUUID := "test-session-auto"
+	testFile := filepath.Join(tempDir, sessionUUID+".jsonl")
+
+	testContent := `{"type":"user","sessionId":"ignored","message":{"role":"user","content":"hello world test message"},"timestamp":"2025-07-06T05:01:29.618Z","uuid":"msg-uuid"}`
+	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Change to temp dir so output file is created there
+	originalDir, _ := os.Getwd()
+	os.Chdir(tempDir)
+	defer os.Chdir(originalDir)
+
+	config := Config{
+		InputPath:  tempDir,
+		Latest:     true,
+		AutoOutput: true,
+	}
+
+	output, err := RunCommand(config)
+	if err != nil {
+		t.Fatalf("RunCommand with --latest -o failed: %v", err)
+	}
+
+	// Should report output file
+	if !strings.Contains(output, "Output written to:") {
+		t.Errorf("Expected output message, got: %s", output)
+	}
+
+	// Check that file was created with expected name
+	expectedFile := "hello_world.md"
+	if _, err := os.Stat(filepath.Join(tempDir, expectedFile)); os.IsNotExist(err) {
+		t.Errorf("Expected file %s to be created", expectedFile)
+	}
 }
 
 func TestGetDefaultTUIDirectory(t *testing.T) {
