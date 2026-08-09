@@ -1,3 +1,5 @@
+
+
 # cclog - Claude Code Conversation Log Viewer & Converter
 
 <img width="1620" height="1052" alt="Image" src="https://github.com/user-attachments/assets/fd7c3707-1fb3-4831-847e-f2f2bf9c0b2d" />
@@ -39,7 +41,7 @@ cclog [OPTIONS] [input]
 ### Arguments
 
 - `[input]` - Path to a JSONL file or a directory.
-  - If no input is provided, `cclog` starts in TUI mode, recursively searching from `~/.claude/projects` (if it exists), or the current directory.
+  - If no input is provided, `cclog` starts in TUI mode, recursively searching from `~/.claude/projects` (if it exists), or `~/.config/claude/projects` as a fallback.
 
 ### Options
 
